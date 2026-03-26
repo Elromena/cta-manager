@@ -269,12 +269,12 @@ export function renderTemplate(template: string, data: Record<string, string>): 
   let result = template;
 
   // Handle conditional sections: {{#var}}content{{/var}}
-  result = result.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_, key, content) => {
-    return data[key] ? content.replace(/\{\{(\w+)\}\}/g, (__, k) => data[k] || '') : '';
+  result = result.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_: string, key: string, content: string) => {
+    return data[key] ? content.replace(/\{\{(\w+)\}\}/g, (_m: string, k: string) => data[k] || '') : '';
   });
 
   // Handle simple variable replacement: {{var}}
-  result = result.replace(/\{\{(\w+)\}\}/g, (_, key) => data[key] || '');
+  result = result.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => data[key] || '');
 
   return result;
 }
