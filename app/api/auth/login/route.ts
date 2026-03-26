@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ADMIN_PASSWORD, getSessionCookieValue } from '@/lib/auth';
+import { getAdminPassword, getSessionCookieValue } from '@/lib/auth';
 
 /**
  * POST /api/auth/login
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { password } = body;
 
-    if (password !== ADMIN_PASSWORD) {
+    if (password !== getAdminPassword()) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 
