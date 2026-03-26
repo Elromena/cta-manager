@@ -21,7 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setError('');
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/cta-admin/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
