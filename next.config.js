@@ -1,3 +1,7 @@
+const { initOpenNextCloudflareForDev } = require('@opennextjs/cloudflare');
+
+initOpenNextCloudflareForDev();
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Webflow Cloud mount path — your app will be at blockchain-ads.com/cta-admin

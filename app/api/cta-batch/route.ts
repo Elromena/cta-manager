@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { ctas, ctaContent, ctaUsage } from '@/drizzle/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { STANDARD_TEMPLATES, renderTemplate } from '@/lib/templates';
 
@@ -12,6 +12,7 @@ import { STANDARD_TEMPLATES, renderTemplate } from '@/lib/templates';
  */
 export async function POST(request: NextRequest) {
   try {
+    const db = getDb();
     const body = await request.json();
     const { slugs, locale = 'en', pageUrl } = body;
 
@@ -23,22 +24,23 @@ export async function POST(request: NextRequest) {
     const allCss = new Set<string>();
 
     for (const slug of slugs) {
-      const cta = db.select().from(ctas).where(eq(ctas.slug, slug)).get();
+      const ctaRows = await db.select().from(ctas).where(eq(ctas.slug, slug));
+      const cta = ctaRows[0];
       if (!cta || cta.status !== 'active') continue;
 
       // Get content for requested locale, fallback to 'en'
-      let content = db
+      let contentRows = await db
         .select()
         .from(ctaContent)
-        .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, locale)))
-        .get();
+        .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, locale)));
+      let content = contentRows[0];
 
       if (!content && locale !== 'en') {
-        content = db
+        contentRows = await db
           .select()
           .from(ctaContent)
-          .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, 'en')))
-          .get();
+          .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, 'en')));
+        content = contentRows[0];
       }
 
       if (!content) continue;
@@ -69,25 +71,24 @@ export async function POST(request: NextRequest) {
 
       // Log usage (upsert)
       if (pageUrl) {
-        const existingUsage = db
+        const existingRows = await db
           .select()
           .from(ctaUsage)
-          .where(and(eq(ctaUsage.ctaSlug, slug), eq(ctaUsage.pageUrl, pageUrl)))
-          .get();
+          .where(and(eq(ctaUsage.ctaSlug, slug), eq(ctaUsage.pageUrl, pageUrl)));
+        const existingUsage = existingRows[0];
 
         if (existingUsage) {
-          db.update(ctaUsage)
+          await db.update(ctaUsage)
             .set({ lastSeenAt: new Date().toISOString(), locale })
-            .where(eq(ctaUsage.id, existingUsage.id))
-            .run();
+            .where(eq(ctaUsage.id, existingUsage.id));
         } else {
-          db.insert(ctaUsage).values({
+          await db.insert(ctaUsage).values({
             id: nanoid(),
             ctaSlug: slug,
             pageUrl,
             locale,
             lastSeenAt: new Date().toISOString(),
-          }).run();
+          });
         }
       }
     }

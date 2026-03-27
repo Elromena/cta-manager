@@ -2,9 +2,6 @@ import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
   schema: './drizzle/schema.ts',
-  out: './drizzle/migrations',
+  out: './migrations',
   dialect: 'sqlite',
-  dbCredentials: {
-    url: process.env.DATABASE_URL || './data/cta-manager.db',
-  },
 });

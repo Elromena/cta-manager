@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { ctaEvents, ctaStatsDaily } from '@/drizzle/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -7,12 +7,13 @@ import { eq, and } from 'drizzle-orm';
  * POST /api/track
  * Log impression or click events from the client script.
  * Body: { events: [{ slug, pageUrl, locale, type: 'impression'|'click' }] }
- * 
+ *
  * Uses sendBeacon on the client side, so this must handle
  * both JSON and text/plain content types.
  */
 export async function POST(request: NextRequest) {
   try {
+    const db = getDb();
     let body;
 
     const contentType = request.headers.get('content-type') || '';
@@ -38,16 +39,16 @@ export async function POST(request: NextRequest) {
       if (type !== 'impression' && type !== 'click') continue;
 
       // Insert raw event
-      db.insert(ctaEvents).values({
+      await db.insert(ctaEvents).values({
         ctaSlug: slug,
         pageUrl,
         locale: locale || 'en',
         eventType: type,
         createdAt: new Date().toISOString(),
-      }).run();
+      });
 
       // Upsert daily stats
-      const existingStat = db
+      const existingRows = await db
         .select()
         .from(ctaStatsDaily)
         .where(
@@ -56,12 +57,12 @@ export async function POST(request: NextRequest) {
             eq(ctaStatsDaily.pageUrl, pageUrl),
             eq(ctaStatsDaily.date, today)
           )
-        )
-        .get();
+        );
+      const existingStat = existingRows[0];
 
       if (existingStat) {
         if (type === 'impression') {
-          db.update(ctaStatsDaily)
+          await db.update(ctaStatsDaily)
             .set({ impressions: (existingStat.impressions || 0) + 1 })
             .where(
               and(
@@ -69,10 +70,9 @@ export async function POST(request: NextRequest) {
                 eq(ctaStatsDaily.pageUrl, pageUrl),
                 eq(ctaStatsDaily.date, today)
               )
-            )
-            .run();
+            );
         } else {
-          db.update(ctaStatsDaily)
+          await db.update(ctaStatsDaily)
             .set({ clicks: (existingStat.clicks || 0) + 1 })
             .where(
               and(
@@ -80,18 +80,17 @@ export async function POST(request: NextRequest) {
                 eq(ctaStatsDaily.pageUrl, pageUrl),
                 eq(ctaStatsDaily.date, today)
               )
-            )
-            .run();
+            );
         }
       } else {
-        db.insert(ctaStatsDaily).values({
+        await db.insert(ctaStatsDaily).values({
           ctaSlug: slug,
           pageUrl,
           locale: locale || 'en',
           date: today,
           impressions: type === 'impression' ? 1 : 0,
           clicks: type === 'click' ? 1 : 0,
-        }).run();
+        });
       }
     }
 

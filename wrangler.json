@@ -1,0 +1,10 @@
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cta-manager-db",
+      "database_id": "1234",
+      "migrations_dir": "./migrations"
+    }
+  ]
+}

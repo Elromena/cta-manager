@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { ctas, ctaContent, ctaUsage } from '@/drizzle/schema';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -11,43 +11,43 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const db = getDb();
     const { slug } = await params;
     const locale = request.nextUrl.searchParams.get('locale') || 'en';
     const render = request.nextUrl.searchParams.get('render') === 'true';
 
-    const cta = db.select().from(ctas).where(eq(ctas.slug, slug)).get();
+    const ctaRows = await db.select().from(ctas).where(eq(ctas.slug, slug));
+    const cta = ctaRows[0];
     if (!cta) {
       return NextResponse.json({ error: 'CTA not found' }, { status: 404 });
     }
 
     // Get content for requested locale, fallback to 'en'
-    let content = db
+    let contentRows = await db
       .select()
       .from(ctaContent)
-      .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, locale)))
-      .get();
+      .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, locale)));
+    let content = contentRows[0];
 
     if (!content && locale !== 'en') {
-      content = db
+      contentRows = await db
         .select()
         .from(ctaContent)
-        .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, 'en')))
-        .get();
+        .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, 'en')));
+      content = contentRows[0];
     }
 
     // Get all content (for admin editing)
-    const allContent = db
+    const allContent = await db
       .select()
       .from(ctaContent)
-      .where(eq(ctaContent.ctaId, cta.id))
-      .all();
+      .where(eq(ctaContent.ctaId, cta.id));
 
     // Get usage info
-    const usage = db
+    const usage = await db
       .select()
       .from(ctaUsage)
-      .where(eq(ctaUsage.ctaSlug, slug))
-      .all();
+      .where(eq(ctaUsage.ctaSlug, slug));
 
     if (render && content) {
       // Render the CTA HTML
@@ -92,17 +92,19 @@ export async function PUT(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const db = getDb();
     const { slug } = await params;
     const body = await request.json();
     const { name, scope, vertical, templateType, templateId, customHtml, status, content } = body;
 
-    const cta = db.select().from(ctas).where(eq(ctas.slug, slug)).get();
+    const ctaRows = await db.select().from(ctas).where(eq(ctas.slug, slug));
+    const cta = ctaRows[0];
     if (!cta) {
       return NextResponse.json({ error: 'CTA not found' }, { status: 404 });
     }
 
     // Update CTA fields
-    db.update(ctas)
+    await db.update(ctas)
       .set({
         name: name ?? cta.name,
         scope: scope ?? cta.scope,
@@ -113,20 +115,19 @@ export async function PUT(
         status: status ?? cta.status,
         updatedAt: new Date().toISOString(),
       })
-      .where(eq(ctas.slug, slug))
-      .run();
+      .where(eq(ctas.slug, slug));
 
     // Update locale content
     if (content && Array.isArray(content)) {
       for (const c of content) {
-        const existingContent = db
+        const existingRows = await db
           .select()
           .from(ctaContent)
-          .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, c.locale || 'en')))
-          .get();
+          .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, c.locale || 'en')));
+        const existingContent = existingRows[0];
 
         if (existingContent) {
-          db.update(ctaContent)
+          await db.update(ctaContent)
             .set({
               heading: c.heading ?? existingContent.heading,
               body: c.body ?? existingContent.body,
@@ -134,10 +135,9 @@ export async function PUT(
               buttonUrl: c.buttonUrl ?? existingContent.buttonUrl,
               imageUrl: c.imageUrl ?? existingContent.imageUrl,
             })
-            .where(eq(ctaContent.id, existingContent.id))
-            .run();
+            .where(eq(ctaContent.id, existingContent.id));
         } else {
-          db.insert(ctaContent).values({
+          await db.insert(ctaContent).values({
             id: nanoid(),
             ctaId: cta.id,
             locale: c.locale || 'en',
@@ -146,7 +146,7 @@ export async function PUT(
             buttonText: c.buttonText || '',
             buttonUrl: c.buttonUrl || '',
             imageUrl: c.imageUrl || '',
-          }).run();
+          });
         }
       }
     }
@@ -164,19 +164,21 @@ export async function DELETE(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const db = getDb();
     const { slug } = await params;
 
-    const cta = db.select().from(ctas).where(eq(ctas.slug, slug)).get();
+    const ctaRows = await db.select().from(ctas).where(eq(ctas.slug, slug));
+    const cta = ctaRows[0];
     if (!cta) {
       return NextResponse.json({ error: 'CTA not found' }, { status: 404 });
     }
 
     // Check usage
-    const usage = db.select().from(ctaUsage).where(eq(ctaUsage.ctaSlug, slug)).all();
+    const usage = await db.select().from(ctaUsage).where(eq(ctaUsage.ctaSlug, slug));
 
     // Delete content first (cascade), then CTA
-    db.delete(ctaContent).where(eq(ctaContent.ctaId, cta.id)).run();
-    db.delete(ctas).where(eq(ctas.id, cta.id)).run();
+    await db.delete(ctaContent).where(eq(ctaContent.ctaId, cta.id));
+    await db.delete(ctas).where(eq(ctas.id, cta.id));
 
     return NextResponse.json({
       success: true,

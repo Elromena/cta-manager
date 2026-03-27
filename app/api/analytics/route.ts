@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { ctaStatsDaily, ctaUsage } from '@/drizzle/schema';
 import { eq, sql, desc } from 'drizzle-orm';
 
@@ -9,12 +9,13 @@ import { eq, sql, desc } from 'drizzle-orm';
  */
 export async function GET(request: NextRequest) {
   try {
+    const db = getDb();
     const slug = request.nextUrl.searchParams.get('slug');
     const days = parseInt(request.nextUrl.searchParams.get('days') || '30');
 
     if (!slug) {
       // Return overview stats for all CTAs
-      const stats = db
+      const stats = await db
         .select({
           ctaSlug: ctaStatsDaily.ctaSlug,
           totalImpressions: sql<number>`SUM(${ctaStatsDaily.impressions})`,
@@ -22,22 +23,20 @@ export async function GET(request: NextRequest) {
         })
         .from(ctaStatsDaily)
         .where(sql`${ctaStatsDaily.date} >= date('now', '-' || ${days} || ' days')`)
-        .groupBy(ctaStatsDaily.ctaSlug)
-        .all();
+        .groupBy(ctaStatsDaily.ctaSlug);
 
       return NextResponse.json({ stats, days });
     }
 
     // Detailed stats for a specific CTA
-    const dailyStats = db
+    const dailyStats = await db
       .select()
       .from(ctaStatsDaily)
       .where(sql`${ctaStatsDaily.ctaSlug} = ${slug} AND ${ctaStatsDaily.date} >= date('now', '-' || ${days} || ' days')`)
-      .orderBy(desc(ctaStatsDaily.date))
-      .all();
+      .orderBy(desc(ctaStatsDaily.date));
 
     // Per-page breakdown
-    const pageBreakdown = db
+    const pageBreakdown = await db
       .select({
         pageUrl: ctaStatsDaily.pageUrl,
         locale: ctaStatsDaily.locale,
@@ -46,11 +45,10 @@ export async function GET(request: NextRequest) {
       })
       .from(ctaStatsDaily)
       .where(sql`${ctaStatsDaily.ctaSlug} = ${slug} AND ${ctaStatsDaily.date} >= date('now', '-' || ${days} || ' days')`)
-      .groupBy(ctaStatsDaily.pageUrl, ctaStatsDaily.locale)
-      .all();
+      .groupBy(ctaStatsDaily.pageUrl, ctaStatsDaily.locale);
 
     // Daily trend
-    const dailyTrend = db
+    const dailyTrend = await db
       .select({
         date: ctaStatsDaily.date,
         impressions: sql<number>`SUM(${ctaStatsDaily.impressions})`,
@@ -59,15 +57,13 @@ export async function GET(request: NextRequest) {
       .from(ctaStatsDaily)
       .where(sql`${ctaStatsDaily.ctaSlug} = ${slug} AND ${ctaStatsDaily.date} >= date('now', '-' || ${days} || ' days')`)
       .groupBy(ctaStatsDaily.date)
-      .orderBy(ctaStatsDaily.date)
-      .all();
+      .orderBy(ctaStatsDaily.date);
 
     // Total usage count
-    const usageCount = db
+    const usageCount = await db
       .select()
       .from(ctaUsage)
-      .where(eq(ctaUsage.ctaSlug, slug))
-      .all();
+      .where(eq(ctaUsage.ctaSlug, slug));
 
     const totals = dailyStats.reduce(
       (acc, s) => ({

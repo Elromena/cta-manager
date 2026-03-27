@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { ctas, ctaContent } from '@/drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -7,16 +7,18 @@ import { nanoid } from 'nanoid';
 // GET /api/cta — List all CTAs with their content
 export async function GET() {
   try {
-    const allCtas = db.select().from(ctas).all();
+    const db = getDb();
+    const allCtas = await db.select().from(ctas);
 
-    const ctasWithContent = allCtas.map((cta) => {
-      const content = db
-        .select()
-        .from(ctaContent)
-        .where(eq(ctaContent.ctaId, cta.id))
-        .all();
-      return { ...cta, content };
-    });
+    const ctasWithContent = await Promise.all(
+      allCtas.map(async (cta) => {
+        const content = await db
+          .select()
+          .from(ctaContent)
+          .where(eq(ctaContent.ctaId, cta.id));
+        return { ...cta, content };
+      })
+    );
 
     return NextResponse.json({ ctas: ctasWithContent });
   } catch (error) {
@@ -28,6 +30,7 @@ export async function GET() {
 // POST /api/cta — Create a new CTA
 export async function POST(request: NextRequest) {
   try {
+    const db = getDb();
     const body = await request.json();
     const { name, slug, scope, vertical, templateType, templateId, customHtml, content } = body;
 
@@ -36,8 +39,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check slug uniqueness
-    const existing = db.select().from(ctas).where(eq(ctas.slug, slug)).get();
-    if (existing) {
+    const existing = await db.select().from(ctas).where(eq(ctas.slug, slug));
+    if (existing.length > 0) {
       return NextResponse.json({ error: 'Slug already exists' }, { status: 409 });
     }
 
@@ -45,7 +48,7 @@ export async function POST(request: NextRequest) {
     const ctaId = nanoid();
 
     // Insert CTA
-    db.insert(ctas).values({
+    await db.insert(ctas).values({
       id: ctaId,
       slug,
       name,
@@ -57,12 +60,12 @@ export async function POST(request: NextRequest) {
       status: 'active',
       createdAt: now,
       updatedAt: now,
-    }).run();
+    });
 
     // Insert locale content
     if (content && Array.isArray(content)) {
       for (const c of content) {
-        db.insert(ctaContent).values({
+        await db.insert(ctaContent).values({
           id: nanoid(),
           ctaId,
           locale: c.locale || 'en',
@@ -71,7 +74,7 @@ export async function POST(request: NextRequest) {
           buttonText: c.buttonText || '',
           buttonUrl: c.buttonUrl || '',
           imageUrl: c.imageUrl || '',
-        }).run();
+        });
       }
     }
 
