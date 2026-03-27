@@ -83,6 +83,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/posts', label: 'Posts Library' },
     { href: '/admin/templates', label: 'Templates' },
     { href: '/admin/analytics', label: 'Analytics' },
+    { href: '/admin/docs', label: 'Docs' },
   ];
 
   return (

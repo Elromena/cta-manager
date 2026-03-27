@@ -477,6 +477,52 @@ a:hover { color: var(--accent-hover); }
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* ── Documentation ───────────────────────────────────────────── */
+.docs-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 28px 0 12px 0;
+}
+.docs-content h3:first-of-type { margin-top: 0; }
+.docs-content p { font-size: 14px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 12px; }
+.docs-content ul, .docs-content ol { font-size: 14px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 12px; padding-left: 24px; }
+.docs-content li { margin-bottom: 4px; }
+.docs-content code {
+  background: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--accent);
+}
+.docs-content strong { color: var(--text); }
+.docs-code {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  white-space: pre;
+}
+.docs-callout {
+  background: rgba(99, 102, 241, 0.06);
+  border-left: 3px solid var(--accent);
+  padding: 14px 18px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.docs-callout strong { color: var(--text); }
+.docs-content .data-table { margin-bottom: 16px; }
+.docs-content .data-table td, .docs-content .data-table th { font-size: 13px; }
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .admin-sidebar { display: none; }
