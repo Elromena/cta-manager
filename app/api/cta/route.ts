@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { ctas, ctaContent } from '@/drizzle/schema';
+import { ctas, ctaContent, ctaUsage } from '@/drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-// GET /api/cta — List all CTAs with their content
+// GET /api/cta — List all CTAs with their content and usage
 export async function GET() {
   try {
     const db = getDb();
@@ -16,7 +16,11 @@ export async function GET() {
           .select()
           .from(ctaContent)
           .where(eq(ctaContent.ctaId, cta.id));
-        return { ...cta, content };
+        const usage = await db
+          .select()
+          .from(ctaUsage)
+          .where(eq(ctaUsage.ctaSlug, cta.slug));
+        return { ...cta, content, usage };
       })
     );
 
