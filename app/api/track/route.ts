@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
     for (const event of events) {
-      const { slug, pageUrl, locale, type } = event;
+      const { slug, pageUrl, locale, variant, type } = event;
+      const eventVariant = variant || 'default';
 
       if (!slug || !pageUrl || !type) continue;
       if (type !== 'impression' && type !== 'click') continue;
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
         ctaSlug: slug,
         pageUrl,
         locale: locale || 'en',
+        variant: eventVariant,
         eventType: type,
         createdAt: new Date().toISOString(),
       });
@@ -87,6 +89,7 @@ export async function POST(request: NextRequest) {
           ctaSlug: slug,
           pageUrl,
           locale: locale || 'en',
+          variant: eventVariant,
           date: today,
           impressions: type === 'impression' ? 1 : 0,
           clicks: type === 'click' ? 1 : 0,

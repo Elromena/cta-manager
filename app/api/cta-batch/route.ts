@@ -8,22 +8,37 @@ import { STANDARD_TEMPLATES, renderTemplate } from '@/lib/templates';
 /**
  * POST /api/cta-batch
  * Batch fetch and render multiple CTAs for the client script.
- * Body: { slugs: string[], locale: string, pageUrl: string }
+ * Body: { items: [{slug, variant}], locale: string, pageUrl: string }
+ * Backwards compatible: also accepts { slugs: string[] } (variant defaults to 'default')
  */
 export async function POST(request: NextRequest) {
   try {
     const db = getDb();
     const body = await request.json();
-    const { slugs, locale = 'en', pageUrl } = body;
+    const { locale = 'en', pageUrl } = body;
 
-    if (!slugs || !Array.isArray(slugs) || slugs.length === 0) {
-      return NextResponse.json({ error: 'slugs array is required' }, { status: 400 });
+    // Support both old format (slugs[]) and new format (items[{slug, variant}])
+    let items: Array<{ slug: string; variant: string }> = [];
+    if (body.items && Array.isArray(body.items)) {
+      items = body.items.map((item: any) => ({
+        slug: item.slug,
+        variant: item.variant || 'default',
+      }));
+    } else if (body.slugs && Array.isArray(body.slugs)) {
+      items = body.slugs.map((slug: string) => ({ slug, variant: 'default' }));
+    }
+
+    if (items.length === 0) {
+      return NextResponse.json({ error: 'items or slugs array is required' }, { status: 400 });
     }
 
     const results: Record<string, { html: string; css: string }> = {};
     const allCss = new Set<string>();
 
-    for (const slug of slugs) {
+    for (const item of items) {
+      const { slug, variant } = item;
+      const resultKey = slug + '::' + variant;
+
       const ctaRows = await db.select().from(ctas).where(eq(ctas.slug, slug));
       const cta = ctaRows[0];
       if (!cta || cta.status !== 'active') continue;
@@ -33,20 +48,29 @@ export async function POST(request: NextRequest) {
       if (cta.startDate && now < cta.startDate) continue;
       if (cta.endDate && now > cta.endDate) continue;
 
-      // Get content for requested locale, fallback to 'en'
-      let contentRows = await db
-        .select()
-        .from(ctaContent)
-        .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, locale)));
-      let content = contentRows[0];
+      // Get content for requested locale + variant, with fallbacks:
+      // 1. Try exact locale + variant
+      // 2. Try locale + 'default' variant
+      // 3. Try 'en' + variant
+      // 4. Try 'en' + 'default'
+      let content = null;
 
-      if (!content && locale !== 'en') {
-        contentRows = await db
+      const tryContent = async (loc: string, v: string) => {
+        const rows = await db
           .select()
           .from(ctaContent)
-          .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, 'en')));
-        content = contentRows[0];
-      }
+          .where(and(
+            eq(ctaContent.ctaId, cta.id),
+            eq(ctaContent.locale, loc),
+            eq(ctaContent.variant, v)
+          ));
+        return rows[0] || null;
+      };
+
+      content = await tryContent(locale, variant);
+      if (!content && variant !== 'default') content = await tryContent(locale, 'default');
+      if (!content && locale !== 'en') content = await tryContent('en', variant);
+      if (!content && (locale !== 'en' || variant !== 'default')) content = await tryContent('en', 'default');
 
       if (!content) continue;
 
@@ -65,7 +89,6 @@ export async function POST(request: NextRequest) {
       if (cta.templateType === 'custom' && cta.customHtml) {
         html = renderTemplate(cta.customHtml, data);
       } else {
-        // Try DB first, fallback to hardcoded defaults
         let tmplHtml = '';
         let tmplCss = '';
 
@@ -88,9 +111,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      results[slug] = { html, css: '' }; // CSS goes in combined stylesheet
+      results[resultKey] = { html, css: '' };
 
-      // Log usage (upsert)
+      // Log usage
       if (pageUrl) {
         const existingRows = await db
           .select()
@@ -100,7 +123,7 @@ export async function POST(request: NextRequest) {
 
         if (existingUsage) {
           await db.update(ctaUsage)
-            .set({ lastSeenAt: new Date().toISOString(), locale })
+            .set({ lastSeenAt: new Date().toISOString(), locale, variant })
             .where(eq(ctaUsage.id, existingUsage.id));
         } else {
           await db.insert(ctaUsage).values({
@@ -108,13 +131,13 @@ export async function POST(request: NextRequest) {
             ctaSlug: slug,
             pageUrl,
             locale,
+            variant,
             lastSeenAt: new Date().toISOString(),
           });
         }
       }
     }
 
-    // Combine all CSS into one stylesheet
     const combinedCss = Array.from(allCss).join('\n');
 
     return NextResponse.json({

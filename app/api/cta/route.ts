@@ -69,13 +69,14 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     });
 
-    // Insert locale content
+    // Insert locale content (with variant support)
     if (content && Array.isArray(content)) {
       for (const c of content) {
         await db.insert(ctaContent).values({
           id: nanoid(),
           ctaId,
           locale: c.locale || 'en',
+          variant: c.variant || 'default',
           heading: c.heading || '',
           body: c.body || '',
           buttonText: c.buttonText || '',

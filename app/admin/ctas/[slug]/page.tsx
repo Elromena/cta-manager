@@ -18,6 +18,7 @@ interface TemplateItem {
 
 interface ContentItem {
   locale: string;
+  variant: string;
   heading: string;
   body: string;
   buttonText: string;
@@ -58,6 +59,10 @@ export default function EditCta() {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [activeLocale, setActiveLocale] = useState('en');
+  const [activeVariant, setActiveVariant] = useState('default');
+  const [variants, setVariants] = useState<string[]>(['default']);
+  const [newVariantName, setNewVariantName] = useState('');
+  const [showAddVariant, setShowAddVariant] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -102,11 +107,19 @@ export default function EditCta() {
         setStartDate(data.startDate?.slice(0, 16) || '');
         setEndDate(data.endDate?.slice(0, 16) || '');
 
+        // Group content by variant::locale key
         const contentMap: Record<string, ContentItem> = {};
+        const variantSet = new Set<string>();
         (data.content || []).forEach((c: ContentItem) => {
-          contentMap[c.locale] = c;
+          const v = c.variant || 'default';
+          variantSet.add(v);
+          const key = v + '::' + c.locale;
+          contentMap[key] = { ...c, variant: v };
         });
         setContent(contentMap);
+        const variantList = Array.from(variantSet);
+        if (variantList.length === 0) variantList.push('default');
+        setVariants(variantList);
         setLoading(false);
       })
       .catch(() => {
@@ -131,11 +144,14 @@ export default function EditCta() {
     setUploading(false);
   };
 
+  const contentKey = activeVariant + '::' + activeLocale;
+
   const updateContent = (locale: string, field: string, value: string) => {
+    const key = activeVariant + '::' + locale;
     setContent({
       ...content,
-      [locale]: {
-        ...(content[locale] || { locale, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' }),
+      [key]: {
+        ...(content[key] || { locale, variant: activeVariant, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' }),
         [field]: value,
       },
     });
@@ -145,15 +161,19 @@ export default function EditCta() {
     setSaving(true);
     setError('');
 
-    const contentArray = Object.entries(content).map(([locale, c]) => ({
-      locale,
-      heading: c.heading,
-      body: c.body,
-      buttonText: c.buttonText,
-      buttonUrl: c.buttonUrl,
-      imageUrl: c.imageUrl,
-      imageFit: c.imageFit || 'cover',
-    }));
+    const contentArray = Object.entries(content).map(([key, c]) => {
+      const [variant, locale] = key.includes('::') ? key.split('::') : ['default', key];
+      return {
+        locale,
+        variant,
+        heading: c.heading,
+        body: c.body,
+        buttonText: c.buttonText,
+        buttonUrl: c.buttonUrl,
+        imageUrl: c.imageUrl,
+        imageFit: c.imageFit || 'cover',
+      };
+    });
 
     try {
       const res = await fetch(`/cta-admin/api/cta/${slug}`, {
@@ -224,11 +244,14 @@ export default function EditCta() {
   if (loading) return <div className="empty-state"><p>Loading CTA...</p></div>;
   if (error && !cta) return <div className="empty-state"><h3>{error}</h3></div>;
 
-  const currentContent = content[activeLocale] || {
-    locale: activeLocale, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover',
+  const currentContent = content[contentKey] || {
+    locale: activeLocale, variant: activeVariant, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover',
   };
 
-  const enabledLocales = Object.keys(content);
+  // Get locales that have content for the active variant
+  const enabledLocales = Object.keys(content)
+    .filter((k) => k.startsWith(activeVariant + '::'))
+    .map((k) => k.split('::')[1]);
 
   // Live preview rendering
   function renderPreview(): { html: string; css: string } {
@@ -448,9 +471,85 @@ export default function EditCta() {
             )}
           </div>
 
+          {/* Variants */}
+          <div className="form-group">
+            <label>Variants</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', alignItems: 'center' }}>
+              {variants.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={`btn btn-sm ${activeVariant === v ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setActiveVariant(v)}
+                >
+                  {v === 'default' ? 'Default' : v}
+                </button>
+              ))}
+              {!showAddVariant ? (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => setShowAddVariant(true)}
+                  style={{ fontSize: '13px' }}
+                >
+                  + Add Variant
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <input
+                    className="form-input"
+                    placeholder="e.g. mid-article"
+                    value={newVariantName}
+                    onChange={(e) => setNewVariantName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+                    style={{ width: '160px', padding: '6px 10px', fontSize: '13px' }}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() => {
+                      if (newVariantName && !variants.includes(newVariantName)) {
+                        setVariants([...variants, newVariantName]);
+                        setActiveVariant(newVariantName);
+                        // Initialize default locale content for this variant
+                        const key = newVariantName + '::en';
+                        if (!content[key]) {
+                          setContent({
+                            ...content,
+                            [key]: { locale: 'en', variant: newVariantName, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' },
+                          });
+                        }
+                      }
+                      setNewVariantName('');
+                      setShowAddVariant(false);
+                    }}
+                    disabled={!newVariantName || variants.includes(newVariantName)}
+                  >
+                    Add
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => { setShowAddVariant(false); setNewVariantName(''); }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+            {activeVariant !== 'default' && (
+              <div style={{ marginBottom: '12px' }}>
+                <div className="embed-code" onClick={() => navigator.clipboard.writeText(`<div data-cta="${slug}" data-variant="${activeVariant}"></div>`)}>
+                  {`<div data-cta="${slug}" data-variant="${activeVariant}"></div>`}
+                  <span className="copy-hint">Click to copy</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Content by Locale */}
           <div className="form-group">
-            <label>Content by Locale</label>
+            <label>Content — {activeVariant === 'default' ? 'Default' : activeVariant}</label>
             <div className="locale-tabs">
               {LOCALES.map((l) => (
                 <button
@@ -458,10 +557,11 @@ export default function EditCta() {
                   type="button"
                   className={`locale-tab ${activeLocale === l ? 'active' : ''}`}
                   onClick={() => {
-                    if (!content[l]) {
+                    const key = activeVariant + '::' + l;
+                    if (!content[key]) {
                       setContent({
                         ...content,
-                        [l]: { locale: l, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' },
+                        [key]: { locale: l, variant: activeVariant, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' },
                       });
                     }
                     setActiveLocale(l);

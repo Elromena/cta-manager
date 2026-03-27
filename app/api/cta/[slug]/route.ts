@@ -136,13 +136,20 @@ export async function PUT(
       })
       .where(eq(ctas.slug, slug));
 
-    // Update locale content
+    // Update locale content (with variant support)
     if (content && Array.isArray(content)) {
       for (const c of content) {
+        const contentLocale = c.locale || 'en';
+        const contentVariant = c.variant || 'default';
+
         const existingRows = await db
           .select()
           .from(ctaContent)
-          .where(and(eq(ctaContent.ctaId, cta.id), eq(ctaContent.locale, c.locale || 'en')));
+          .where(and(
+            eq(ctaContent.ctaId, cta.id),
+            eq(ctaContent.locale, contentLocale),
+            eq(ctaContent.variant, contentVariant)
+          ));
         const existingContent = existingRows[0];
 
         if (existingContent) {
@@ -160,7 +167,8 @@ export async function PUT(
           await db.insert(ctaContent).values({
             id: nanoid(),
             ctaId: cta.id,
-            locale: c.locale || 'en',
+            locale: contentLocale,
+            variant: contentVariant,
             heading: c.heading || '',
             body: c.body || '',
             buttonText: c.buttonText || '',

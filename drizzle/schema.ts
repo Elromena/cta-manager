@@ -22,6 +22,7 @@ export const ctaContent = sqliteTable('cta_content', {
   id: text('id').primaryKey(),
   ctaId: text('cta_id').notNull().references(() => ctas.id, { onDelete: 'cascade' }),
   locale: text('locale').notNull().default('en'),
+  variant: text('variant').notNull().default('default'),
   heading: text('heading'),
   body: text('body'),
   buttonText: text('button_text'),
@@ -46,6 +47,7 @@ export const ctaUsage = sqliteTable('cta_usage', {
   ctaSlug: text('cta_slug').notNull(),
   pageUrl: text('page_url').notNull(),
   locale: text('locale'),
+  variant: text('variant').default('default'),
   lastSeenAt: text('last_seen_at'),
 });
 
@@ -55,6 +57,7 @@ export const ctaEvents = sqliteTable('cta_events', {
   ctaSlug: text('cta_slug').notNull(),
   pageUrl: text('page_url').notNull(),
   locale: text('locale'),
+  variant: text('variant').default('default'),
   eventType: text('event_type').notNull(), // 'impression' | 'click'
   createdAt: text('created_at'),
 });
@@ -64,6 +67,7 @@ export const ctaStatsDaily = sqliteTable('cta_stats_daily', {
   ctaSlug: text('cta_slug').notNull(),
   pageUrl: text('page_url').notNull(),
   locale: text('locale'),
+  variant: text('variant').default('default'),
   date: text('date').notNull(),
   impressions: integer('impressions').default(0),
   clicks: integer('clicks').default(0),

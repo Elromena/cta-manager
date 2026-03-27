@@ -75,27 +75,37 @@
     if (elements.length === 0) return;
 
     var locale = detectLocale();
-    var slugs = [];
-    var elMap = {};
+    var items = []; // { slug, variant } pairs for batch request
+    var elMap = {}; // key: "slug::variant" → elements[]
 
     for (var i = 0; i < elements.length; i++) {
       var el = elements[i];
       var slug = el.getAttribute('data-cta');
       if (!slug) continue;
+      var variant = el.getAttribute('data-variant') || 'default';
 
       addSkeleton(el);
 
-      if (slugs.indexOf(slug) === -1) {
-        slugs.push(slug);
+      var key = slug + '::' + variant;
+      // Collect unique slug+variant combos for the batch request
+      var alreadyAdded = false;
+      for (var x = 0; x < items.length; x++) {
+        if (items[x].slug === slug && items[x].variant === variant) {
+          alreadyAdded = true;
+          break;
+        }
       }
-      if (!elMap[slug]) elMap[slug] = [];
-      elMap[slug].push(el);
+      if (!alreadyAdded) {
+        items.push({ slug: slug, variant: variant });
+      }
+      if (!elMap[key]) elMap[key] = [];
+      elMap[key].push(el);
     }
 
-    // Batch fetch all CTAs
+    // Batch fetch all CTAs (with variant support)
     var url = API_BASE + '/cta-admin/api/cta-batch';
     var payload = JSON.stringify({
-      slugs: slugs,
+      items: items,
       locale: locale,
       pageUrl: window.location.origin + window.location.pathname,
     });
@@ -117,13 +127,15 @@
 
         // Render each CTA
         var ctaData = data.ctas || {};
-        for (var slug in ctaData) {
-          var cta = ctaData[slug];
-          var targets = elMap[slug];
+        for (var ctaKey in ctaData) {
+          var cta = ctaData[ctaKey];
+          var targets = elMap[ctaKey];
           if (!targets || !cta.html) continue;
 
           for (var j = 0; j < targets.length; j++) {
             var el = targets[j];
+            var elSlug = el.getAttribute('data-cta');
+            var elVariant = el.getAttribute('data-variant') || 'default';
 
             // Clear skeleton
             el.style.minHeight = '';
@@ -144,8 +156,8 @@
             // Admin preview highlight
             addAdminHighlight(el);
 
-            // Set up tracking
-            setupTracking(el, slug, locale);
+            // Set up tracking (with variant)
+            setupTracking(el, elSlug, locale, elVariant);
           }
         }
       })
@@ -164,13 +176,13 @@
   var pendingEvents = [];
   var flushTimeout = null;
 
-  function setupTracking(el, slug, locale) {
+  function setupTracking(el, slug, locale, variant) {
     // Impression tracking via IntersectionObserver
     if ('IntersectionObserver' in window) {
       var observer = new IntersectionObserver(function (entries) {
         entries.forEach(function (entry) {
           if (entry.isIntersecting) {
-            queueEvent(slug, 'impression', locale);
+            queueEvent(slug, 'impression', locale, variant);
             observer.unobserve(entry.target);
           }
         });
@@ -184,7 +196,7 @@
       // Check if clicked on a link/button
       while (target && target !== el) {
         if (target.tagName === 'A' || target.tagName === 'BUTTON') {
-          queueEvent(slug, 'click', locale);
+          queueEvent(slug, 'click', locale, variant);
           flushEvents(); // Flush immediately on click
           break;
         }
@@ -193,11 +205,12 @@
     });
   }
 
-  function queueEvent(slug, type, locale) {
+  function queueEvent(slug, type, locale, variant) {
     pendingEvents.push({
       slug: slug,
       pageUrl: window.location.origin + window.location.pathname,
       locale: locale,
+      variant: variant || 'default',
       type: type,
     });
 

@@ -59,11 +59,13 @@ export async function POST(
         id: nanoid(),
         ctaId: newId,
         locale: c.locale,
+        variant: c.variant || 'default',
         heading: c.heading,
         body: c.body,
         buttonText: c.buttonText,
         buttonUrl: c.buttonUrl,
         imageUrl: c.imageUrl,
+        imageFit: c.imageFit || 'cover',
       });
     }
 
