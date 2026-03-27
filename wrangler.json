@@ -10,5 +10,11 @@
       "database_id": "123456789",
       "migrations_dir": "./migrations"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "cta-media"
+    }
   ]
 }

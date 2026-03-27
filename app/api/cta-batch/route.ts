@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         buttonText: content.buttonText || '',
         buttonUrl: content.buttonUrl || '',
         imageUrl: content.imageUrl || '',
+        imageFit: content.imageFit || 'cover',
       };
 
       let html = '';

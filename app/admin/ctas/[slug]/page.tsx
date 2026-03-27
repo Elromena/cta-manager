@@ -23,6 +23,7 @@ interface ContentItem {
   buttonText: string;
   buttonUrl: string;
   imageUrl: string;
+  imageFit: string;
 }
 
 interface UsageItem {
@@ -53,6 +54,7 @@ export default function EditCta() {
   const [cta, setCta] = useState<CtaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [activeLocale, setActiveLocale] = useState('en');
@@ -105,11 +107,27 @@ export default function EditCta() {
       });
   }, [slug]);
 
+  const handleImageUpload = async (file: File, locale: string) => {
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/cta-admin/api/media/upload', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      updateContent(locale, 'imageUrl', data.url);
+    } catch {
+      setToast('Image upload failed');
+      setTimeout(() => setToast(''), 3000);
+    }
+    setUploading(false);
+  };
+
   const updateContent = (locale: string, field: string, value: string) => {
     setContent({
       ...content,
       [locale]: {
-        ...(content[locale] || { locale, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '' }),
+        ...(content[locale] || { locale, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' }),
         [field]: value,
       },
     });
@@ -126,6 +144,7 @@ export default function EditCta() {
       buttonText: c.buttonText,
       buttonUrl: c.buttonUrl,
       imageUrl: c.imageUrl,
+      imageFit: c.imageFit || 'cover',
     }));
 
     try {
@@ -198,7 +217,7 @@ export default function EditCta() {
   if (error && !cta) return <div className="empty-state"><h3>{error}</h3></div>;
 
   const currentContent = content[activeLocale] || {
-    locale: activeLocale, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '',
+    locale: activeLocale, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover',
   };
 
   const enabledLocales = Object.keys(content);
@@ -385,7 +404,7 @@ export default function EditCta() {
                     if (!content[l]) {
                       setContent({
                         ...content,
-                        [l]: { locale: l, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '' },
+                        [l]: { locale: l, heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' },
                       });
                     }
                     setActiveLocale(l);
@@ -433,12 +452,74 @@ export default function EditCta() {
               </div>
             </div>
             <div className="form-group">
-              <label>Image URL</label>
-              <input
-                className="form-input"
-                value={currentContent.imageUrl}
-                onChange={(e) => updateContent(activeLocale, 'imageUrl', e.target.value)}
-              />
+              <label>Image</label>
+              {currentContent.imageUrl && (
+                <div style={{ marginBottom: '8px' }}>
+                  <img
+                    src={currentContent.imageUrl}
+                    alt="Preview"
+                    style={{
+                      height: '120px',
+                      borderRadius: '8px',
+                      objectFit: (currentContent.imageFit as React.CSSProperties['objectFit']) || 'cover',
+                      display: 'block',
+                      border: '1px solid var(--border)',
+                    }}
+                  />
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  id={`image-upload-${activeLocale}`}
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImageUpload(file, activeLocale);
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => document.getElementById(`image-upload-${activeLocale}`)?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Uploading...' : 'Upload Image'}
+                </button>
+                {currentContent.imageUrl && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => updateContent(activeLocale, 'imageUrl', '')}
+                    style={{ color: 'var(--danger)' }}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <div className="form-group" style={{ marginBottom: '8px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Or paste URL</label>
+                <input
+                  className="form-input"
+                  value={currentContent.imageUrl}
+                  onChange={(e) => updateContent(activeLocale, 'imageUrl', e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Image Fit</label>
+                <select
+                  className="form-select"
+                  value={currentContent.imageFit || 'cover'}
+                  onChange={(e) => updateContent(activeLocale, 'imageFit', e.target.value)}
+                >
+                  <option value="cover">Cover</option>
+                  <option value="contain">Contain</option>
+                  <option value="fill">Fill</option>
+                </select>
+              </div>
             </div>
           </div>
 

@@ -17,6 +17,7 @@ interface ContentByLocale {
     buttonText: string;
     buttonUrl: string;
     imageUrl: string;
+    imageFit: string;
   };
 }
 
@@ -40,9 +41,10 @@ export default function CreateCta() {
   const [activeLocale, setActiveLocale] = useState('en');
   const [enabledLocales, setEnabledLocales] = useState<string[]>(['en']);
   const [content, setContent] = useState<ContentByLocale>({
-    en: { heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '' },
+    en: { heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' },
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
 
@@ -102,10 +104,26 @@ export default function CreateCta() {
       if (!content[locale]) {
         setContent({
           ...content,
-          [locale]: { heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '' },
+          [locale]: { heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover' },
         });
       }
     }
+  };
+
+  const handleImageUpload = async (file: File, locale: string) => {
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/cta-admin/api/media/upload', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      updateContent(locale, 'imageUrl', data.url);
+    } catch {
+      setToast('Image upload failed');
+      setTimeout(() => setToast(''), 3000);
+    }
+    setUploading(false);
   };
 
   const updateContent = (locale: string, field: string, value: string) => {
@@ -142,6 +160,7 @@ export default function CreateCta() {
     const contentArray = enabledLocales.map((locale) => ({
       locale,
       ...content[locale],
+      imageFit: content[locale]?.imageFit || 'cover',
     }));
 
     try {
@@ -176,7 +195,7 @@ export default function CreateCta() {
   };
 
   const currentContent = content[activeLocale] || {
-    heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '',
+    heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover',
   };
 
   return (
@@ -451,13 +470,74 @@ export default function CreateCta() {
             </div>
           </div>
           <div className="form-group">
-            <label>Image URL (optional)</label>
-            <input
-              className="form-input"
-              value={currentContent.imageUrl}
-              onChange={(e) => updateContent(activeLocale, 'imageUrl', e.target.value)}
-              placeholder="https://..."
-            />
+            <label>Image (optional)</label>
+            {currentContent.imageUrl && (
+              <div style={{ marginBottom: '8px' }}>
+                <img
+                  src={currentContent.imageUrl}
+                  alt="Preview"
+                  style={{
+                    height: '120px',
+                    borderRadius: '8px',
+                    objectFit: (currentContent.imageFit as React.CSSProperties['objectFit']) || 'cover',
+                    display: 'block',
+                    border: '1px solid var(--border)',
+                  }}
+                />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+              <input
+                type="file"
+                accept="image/*"
+                id={`image-upload-${activeLocale}`}
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file, activeLocale);
+                  e.target.value = '';
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={() => document.getElementById(`image-upload-${activeLocale}`)?.click()}
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading...' : 'Upload Image'}
+              </button>
+              {currentContent.imageUrl && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => updateContent(activeLocale, 'imageUrl', '')}
+                  style={{ color: 'var(--danger)' }}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <div className="form-group" style={{ marginBottom: '8px' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Or paste URL</label>
+              <input
+                className="form-input"
+                value={currentContent.imageUrl}
+                onChange={(e) => updateContent(activeLocale, 'imageUrl', e.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+            <div className="form-group">
+              <label style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Image Fit</label>
+              <select
+                className="form-select"
+                value={currentContent.imageFit || 'cover'}
+                onChange={(e) => updateContent(activeLocale, 'imageFit', e.target.value)}
+              >
+                <option value="cover">Cover</option>
+                <option value="contain">Contain</option>
+                <option value="fill">Fill</option>
+              </select>
+            </div>
           </div>
         </div>
 

@@ -85,7 +85,7 @@ export const STANDARD_TEMPLATES: TemplateDefinition[] = [
     description: 'Compact card with optional image, heading, body, and button',
     htmlTemplate: `
 <div class="bca-cta bca-cta--card">
-  {{#imageUrl}}<img src="{{imageUrl}}" alt="{{heading}}" class="bca-cta__image" />{{/imageUrl}}
+  {{#imageUrl}}<img src="{{imageUrl}}" alt="{{heading}}" class="bca-cta__image" style="object-fit: {{imageFit}}" />{{/imageUrl}}
   <div class="bca-cta__content">
     <h3 class="bca-cta__heading">{{heading}}</h3>
     <p class="bca-cta__body">{{body}}</p>
@@ -187,7 +187,7 @@ export const STANDARD_TEMPLATES: TemplateDefinition[] = [
     htmlTemplate: `
 <div class="bca-cta bca-cta--image-text">
   {{#imageUrl}}<div class="bca-cta__media">
-    <img src="{{imageUrl}}" alt="{{heading}}" class="bca-cta__image" />
+    <img src="{{imageUrl}}" alt="{{heading}}" class="bca-cta__image" style="object-fit: {{imageFit}}" />
   </div>{{/imageUrl}}
   <div class="bca-cta__content">
     <h3 class="bca-cta__heading">{{heading}}</h3>

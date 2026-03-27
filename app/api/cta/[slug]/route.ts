@@ -61,6 +61,7 @@ export async function GET(
           buttonText: content.buttonText || '',
           buttonUrl: content.buttonUrl || '',
           imageUrl: content.imageUrl || '',
+          imageFit: content.imageFit || 'cover',
         });
       } else {
         // Try DB first, fallback to hardcoded defaults
@@ -86,6 +87,7 @@ export async function GET(
             buttonText: content.buttonText || '',
             buttonUrl: content.buttonUrl || '',
             imageUrl: content.imageUrl || '',
+            imageFit: content.imageFit || 'cover',
           });
           css = tmplCss;
         }
@@ -151,6 +153,7 @@ export async function PUT(
               buttonText: c.buttonText ?? existingContent.buttonText,
               buttonUrl: c.buttonUrl ?? existingContent.buttonUrl,
               imageUrl: c.imageUrl ?? existingContent.imageUrl,
+              imageFit: c.imageFit ?? existingContent.imageFit,
             })
             .where(eq(ctaContent.id, existingContent.id));
         } else {
@@ -163,6 +166,7 @@ export async function PUT(
             buttonText: c.buttonText || '',
             buttonUrl: c.buttonUrl || '',
             imageUrl: c.imageUrl || '',
+            imageFit: c.imageFit || 'cover',
           });
         }
       }

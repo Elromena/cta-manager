@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
           buttonText: c.buttonText || '',
           buttonUrl: c.buttonUrl || '',
           imageUrl: c.imageUrl || '',
+          imageFit: c.imageFit || 'cover',
         });
       }
     }

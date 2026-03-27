@@ -27,6 +27,7 @@ export const ctaContent = sqliteTable('cta_content', {
   buttonText: text('button_text'),
   buttonUrl: text('button_url'),
   imageUrl: text('image_url'),
+  imageFit: text('image_fit').default('cover'), // 'cover' | 'contain' | 'fill'
 });
 
 // ── Templates ────────────────────────────────────────────────────

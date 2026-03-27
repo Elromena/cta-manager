@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface Template {
   id: string;
@@ -30,35 +31,32 @@ function renderPreview(template: string, data: Record<string, string>): string {
   return result;
 }
 
-export default function TemplatesEditor() {
+type FilterTab = 'all' | 'standard' | 'custom';
+
+export default function TemplatesListPage() {
+  const router = useRouter();
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [selected, setSelected] = useState<Template | null>(null);
-  const [editHtml, setEditHtml] = useState('');
-  const [editCss, setEditCss] = useState('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState<FilterTab>('all');
   const [toast, setToast] = useState('');
-  const [activeTab, setActiveTab] = useState<'html' | 'css'>('html');
+  const [showCreate, setShowCreate] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createHtml, setCreateHtml] = useState('');
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  function fetchTemplates() {
+    setLoading(true);
     fetch('/cta-admin/api/templates')
       .then((r) => r.json())
       .then((data) => {
-        const list = data.templates || [];
-        setTemplates(list);
-        if (list.length > 0) {
-          selectTemplate(list[0]);
-        }
+        setTemplates(data.templates || []);
       })
       .catch(() => showToast('Failed to load templates'))
       .finally(() => setLoading(false));
-  }, []);
-
-  function selectTemplate(t: Template) {
-    setSelected(t);
-    setEditHtml(t.htmlTemplate);
-    setEditCss(t.css);
-    setActiveTab('html');
   }
 
   function showToast(msg: string) {
@@ -66,195 +64,305 @@ export default function TemplatesEditor() {
     setTimeout(() => setToast(''), 3000);
   }
 
-  async function handleSave() {
-    if (!selected) return;
-    setSaving(true);
+  function getCategory(t: Template): 'Standard' | 'Custom' {
+    return STANDARD_IDS.includes(t.id) ? 'Standard' : 'Custom';
+  }
+
+  const filtered = templates.filter((t) => {
+    if (filter === 'standard') return STANDARD_IDS.includes(t.id);
+    if (filter === 'custom') return !STANDARD_IDS.includes(t.id);
+    return true;
+  });
+
+  async function handleCreate() {
+    if (!createName.trim() || !createHtml.trim()) {
+      showToast('Name and HTML are required');
+      return;
+    }
+    setCreating(true);
     try {
       const res = await fetch('/cta-admin/api/templates', {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: selected.id, htmlTemplate: editHtml, css: editCss }),
+        body: JSON.stringify({
+          name: createName.trim(),
+          htmlTemplate: createHtml.trim(),
+          css: '',
+        }),
       });
-      if (!res.ok) throw new Error('Save failed');
-
-      const updated = templates.map((t) =>
-        t.id === selected.id ? { ...t, htmlTemplate: editHtml, css: editCss } : t
-      );
-      setTemplates(updated);
-      setSelected({ ...selected, htmlTemplate: editHtml, css: editCss });
-      showToast('Template saved!');
+      if (!res.ok) throw new Error('Create failed');
+      showToast('Template created!');
+      setCreateName('');
+      setCreateHtml('');
+      setShowCreate(false);
+      fetchTemplates();
     } catch {
-      showToast('Failed to save template');
+      showToast('Failed to create template');
     } finally {
-      setSaving(false);
+      setCreating(false);
     }
   }
-
-  async function handleReset() {
-    if (!selected) return;
-    if (!confirm(`Reset "${selected.name}" to its original default? Your customizations will be lost.`)) return;
-
-    setSaving(true);
-    try {
-      const res = await fetch(`/cta-admin/api/templates/reset?id=${selected.id}`, { method: 'POST' });
-      if (!res.ok) throw new Error('Reset failed');
-      const data = await res.json();
-
-      setEditHtml(data.htmlTemplate);
-      setEditCss(data.css);
-      const updated = templates.map((t) =>
-        t.id === selected.id ? { ...t, htmlTemplate: data.htmlTemplate, css: data.css } : t
-      );
-      setTemplates(updated);
-      setSelected({ ...selected, htmlTemplate: data.htmlTemplate, css: data.css });
-      showToast('Template reset to default!');
-    } catch {
-      showToast('Failed to reset template');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const previewHtml = selected ? renderPreview(editHtml, SAMPLE_DATA) : '';
 
   if (loading) {
-    return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading templates...</div>;
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+        Loading templates...
+      </div>
+    );
   }
+
+  const filterTabs: { key: FilterTab; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'standard', label: 'Standard' },
+    { key: 'custom', label: 'Custom' },
+  ];
 
   return (
     <div>
+      {/* Toast */}
       {toast && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, background: '#111827', color: '#fff',
-          padding: '12px 20px', borderRadius: 8, zIndex: 1000, fontSize: 14,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-        }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 20,
+            right: 20,
+            background: 'var(--text)',
+            color: '#fff',
+            padding: '12px 20px',
+            borderRadius: 8,
+            zIndex: 1000,
+            fontSize: 14,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          }}
+        >
           {toast}
         </div>
       )}
 
+      {/* Page Header */}
       <div className="page-header" style={{ marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Template Editor</h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>Customize the HTML and CSS of your standard CTA templates</p>
+          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Templates</h1>
+          <p style={{ color: 'var(--text-muted)', marginTop: 4 }}>
+            Browse and manage your CTA templates
+          </p>
         </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowCreate(!showCreate)}
+        >
+          {showCreate ? 'Cancel' : '+ Create Template'}
+        </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 24, minHeight: 'calc(100vh - 200px)' }}>
-        {/* Template list */}
-        <div style={{ width: 220, flexShrink: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8 }}>Templates</div>
-          {templates.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => selectTemplate(t)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '12px 16px',
-                marginBottom: 4,
-                borderRadius: 8,
-                border: 'none',
-                cursor: 'pointer',
-                background: selected?.id === t.id ? 'var(--accent)' : 'transparent',
-                color: selected?.id === t.id ? '#fff' : 'var(--text-secondary)',
-                fontWeight: selected?.id === t.id ? 600 : 400,
-                fontSize: 14,
-                transition: 'all 0.15s',
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {t.name}
-                {!STANDARD_IDS.includes(t.id) && (
-                  <span style={{ fontSize: 9, color: 'var(--warning)', fontWeight: 600, textTransform: 'uppercase' }}>Custom</span>
-                )}
-              </span>
-              <div style={{
-                fontSize: 11,
-                marginTop: 2,
-                opacity: 0.7,
-                color: selected?.id === t.id ? 'rgba(255,255,255,0.8)' : 'var(--text-muted)',
-              }}>
-                {t.description}
-              </div>
-            </button>
-          ))}
-
-          <div style={{ marginTop: 24, padding: 16, background: 'var(--bg-card)', borderRadius: 8, border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Variables</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.8, fontFamily: 'monospace' }}>
-              {'{{heading}}'}<br />
-              {'{{body}}'}<br />
-              {'{{buttonText}}'}<br />
-              {'{{buttonUrl}}'}<br />
-              {'{{imageUrl}}'}<br />
-              {'{{#imageUrl}}...{{/imageUrl}}'}
-            </div>
+      {/* Inline Create Form */}
+      {showCreate && (
+        <div
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            borderRadius: 12,
+            padding: 24,
+            marginBottom: 24,
+          }}
+        >
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+            Create New Template
+          </h3>
+          <div className="form-group" style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              Template Name
+            </label>
+            <input
+              className="form-input"
+              type="text"
+              placeholder="e.g. Promo Banner"
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              style={{ width: '100%' }}
+            />
           </div>
-        </div>
-
-        {/* Editor + Preview */}
-        {selected && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Action bar */}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              {STANDARD_IDS.includes(selected.id) && (
-                <button onClick={handleReset} disabled={saving} className="btn btn-secondary btn-sm" style={{ fontSize: 13 }}>
-                  Reset to Default
-                </button>
-              )}
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm" style={{ fontSize: 13 }}>
-                {saving ? 'Saving...' : 'Save Template'}
-              </button>
-            </div>
-
-            {/* Live preview */}
-            <div style={{
-              background: '#fff', border: '1px solid var(--border)', borderRadius: 12, padding: 32, minHeight: 180,
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 16 }}>Live Preview</div>
-              <style dangerouslySetInnerHTML={{ __html: editCss }} />
-              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
-            </div>
-
-            {/* Editor tabs */}
-            <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)' }}>
-              {(['html', 'css'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  style={{
-                    padding: '10px 20px', fontSize: 13, fontWeight: 600, border: 'none',
-                    borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
-                    background: 'transparent',
-                    color: activeTab === tab ? 'var(--accent)' : 'var(--text-muted)',
-                    cursor: 'pointer', textTransform: 'uppercase',
-                  }}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* Code editor */}
+          <div className="form-group" style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              HTML Template
+            </label>
             <textarea
-              value={activeTab === 'html' ? editHtml : editCss}
-              onChange={(e) => activeTab === 'html' ? setEditHtml(e.target.value) : setEditCss(e.target.value)}
-              spellCheck={false}
+              className="form-textarea"
+              placeholder={'<div class="cta">\n  <h2>{{heading}}</h2>\n  <p>{{body}}</p>\n  <a href="{{buttonUrl}}">{{buttonText}}</a>\n</div>'}
+              value={createHtml}
+              onChange={(e) => setCreateHtml(e.target.value)}
+              rows={8}
               style={{
-                flex: 1, minHeight: 300,
+                width: '100%',
                 fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
-                fontSize: 13, lineHeight: 1.6, padding: 20,
-                background: '#f8f9fa', color: '#1e293b',
-                border: '1px solid var(--border)', borderRadius: 8,
-                resize: 'vertical', tabSize: 2,
-                whiteSpace: 'pre', overflowX: 'auto',
+                fontSize: 13,
+                lineHeight: 1.6,
+                resize: 'vertical',
               }}
             />
           </div>
-        )}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setShowCreate(false);
+                setCreateName('');
+                setCreateHtml('');
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleCreate}
+              disabled={creating}
+            >
+              {creating ? 'Saving...' : 'Save Template'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Filter Tabs */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+        {filterTabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            style={{
+              padding: '10px 20px',
+              fontSize: 13,
+              fontWeight: 600,
+              border: 'none',
+              borderBottom: filter === tab.key ? '2px solid var(--accent)' : '2px solid transparent',
+              background: 'transparent',
+              color: filter === tab.key ? 'var(--accent)' : 'var(--text-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            {tab.label}
+            <span
+              style={{
+                marginLeft: 6,
+                fontSize: 11,
+                background: filter === tab.key ? 'var(--accent)' : 'var(--border)',
+                color: filter === tab.key ? '#fff' : 'var(--text-muted)',
+                padding: '2px 7px',
+                borderRadius: 10,
+              }}
+            >
+              {tab.key === 'all'
+                ? templates.length
+                : tab.key === 'standard'
+                  ? templates.filter((t) => STANDARD_IDS.includes(t.id)).length
+                  : templates.filter((t) => !STANDARD_IDS.includes(t.id)).length}
+            </span>
+          </button>
+        ))}
       </div>
+
+      {/* Empty State */}
+      {filtered.length === 0 && (
+        <div
+          style={{
+            textAlign: 'center',
+            padding: '60px 20px',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <div style={{ fontSize: 40, marginBottom: 12 }}>&#128196;</div>
+          <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
+            No templates found
+          </h3>
+          <p style={{ fontSize: 14 }}>
+            {filter !== 'all'
+              ? `No ${filter} templates yet. Try a different filter or create one.`
+              : 'Get started by creating your first template.'}
+          </p>
+        </div>
+      )}
+
+      {/* Template Grid */}
+      {filtered.length > 0 && (
+        <div className="template-grid">
+          {filtered.map((t) => {
+            const category = getCategory(t);
+            const previewHtml = renderPreview(t.htmlTemplate, SAMPLE_DATA);
+
+            return (
+              <div
+                key={t.id}
+                className="template-card"
+                onClick={() => router.push(`/admin/templates/${t.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
+                {/* Live Preview Thumbnail */}
+                <div
+                  style={{
+                    position: 'relative',
+                    height: 120,
+                    overflow: 'hidden',
+                    borderBottom: '1px solid var(--border)',
+                    background: '#fff',
+                    borderRadius: '12px 12px 0 0',
+                  }}
+                >
+                  <div
+                    style={{
+                      transform: 'scale(0.4)',
+                      transformOrigin: 'top left',
+                      width: '250%',
+                      height: 120,
+                      overflow: 'hidden',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <style dangerouslySetInnerHTML={{ __html: t.css }} />
+                    <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div style={{ padding: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                      {t.name}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        background: category === 'Standard' ? 'var(--accent)' : 'var(--warning)',
+                        color: '#fff',
+                      }}
+                    >
+                      {category}
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: 'var(--text-muted)',
+                      lineHeight: 1.5,
+                      margin: 0,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {t.description || 'No description'}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
