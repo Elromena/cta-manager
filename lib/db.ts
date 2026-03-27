@@ -1,13 +1,18 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '@/drizzle/schema';
-import { cache } from 'react';
 
 /**
  * Get a Drizzle ORM instance backed by Cloudflare D1.
- * Wrapped in React cache() to scope one client per request.
+ * Must be called inside a request handler (API route, server component, etc.)
  */
-export const getDb = cache(() => {
-  const { env } = getCloudflareContext();
-  return drizzle(env.DB, { schema });
-});
+export function getDb() {
+  const ctx = getCloudflareContext();
+  const db = (ctx as any).env?.DB;
+  if (!db) {
+    throw new Error(
+      `D1 binding "DB" not found. Context keys: ${JSON.stringify(Object.keys((ctx as any).env || {}))}. Full ctx keys: ${JSON.stringify(Object.keys(ctx || {}))}`
+    );
+  }
+  return drizzle(db, { schema });
+}
