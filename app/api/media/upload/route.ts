@@ -13,7 +13,7 @@ const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 export async function POST(request: NextRequest) {
   try {
     const { env } = getCloudflareContext();
-    const bucket = env.MEDIA;
+    const bucket = env.R2;
 
     if (!bucket) {
       return NextResponse.json(

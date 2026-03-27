@@ -13,7 +13,7 @@
   ],
   "r2_buckets": [
     {
-      "binding": "MEDIA",
+      "binding": "R2",
       "bucket_name": "cta-media"
     }
   ]

@@ -12,7 +12,7 @@ export async function GET(
 ) {
   try {
     const { env } = getCloudflareContext();
-    const bucket = env.MEDIA;
+    const bucket = env.R2;
 
     if (!bucket) {
       return new Response('Media storage not configured', { status: 500 });
