@@ -11,6 +11,8 @@ export const ctas = sqliteTable('ctas', {
   templateId: text('template_id'),
   customHtml: text('custom_html'),
   status: text('status').default('active'),
+  startDate: text('start_date'),
+  endDate: text('end_date'),
   createdAt: text('created_at'),
   updatedAt: text('updated_at'),
 });
@@ -34,6 +36,7 @@ export const templates = sqliteTable('templates', {
   htmlTemplate: text('html_template').notNull(),
   css: text('css'),
   previewImage: text('preview_image'),
+  category: text('category').default('standard'), // 'standard' | 'custom'
 });
 
 // ── Usage Tracking ───────────────────────────────────────────────

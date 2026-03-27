@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   try {
     const db = getDb();
     const body = await request.json();
-    const { name, slug, scope, vertical, templateType, templateId, customHtml, content } = body;
+    const { name, slug, scope, vertical, templateType, templateId, customHtml, startDate, endDate, content } = body;
 
     if (!name || !slug) {
       return NextResponse.json({ error: 'Name and slug are required' }, { status: 400 });
@@ -63,6 +63,8 @@ export async function POST(request: NextRequest) {
       templateId: templateId || 'banner',
       customHtml: customHtml || null,
       status: 'active',
+      startDate: startDate || null,
+      endDate: endDate || null,
       createdAt: now,
       updatedAt: now,
     });

@@ -19,14 +19,25 @@ export default function CtasList() {
   const [ctas, setCtas] = useState<Cta[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [toast, setToast] = useState('');
 
-  useEffect(() => {
+  const showToast = (message: string) => {
+    setToast(message);
+    setTimeout(() => setToast(''), 3000);
+  };
+
+  const fetchCtas = () => {
     fetch('/cta-admin/api/cta')
       .then((r) => r.json())
       .then((data) => {
         setCtas(data.ctas || []);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchCtas();
   }, []);
 
   const filtered = ctas.filter((cta) => {
@@ -34,6 +45,45 @@ export default function CtasList() {
     if (filter === 'inactive') return cta.status !== 'active';
     return true;
   });
+
+  const toggleSelect = (slug: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) {
+        next.delete(slug);
+      } else {
+        next.add(slug);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((cta) => cta.slug)));
+    }
+  };
+
+  const handleBulkAction = async (action: 'activate' | 'deactivate') => {
+    await fetch('/cta-admin/api/cta/bulk', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slugs: Array.from(selected), action }),
+    });
+    fetchCtas();
+    setSelected(new Set());
+    showToast(`${selected.size} CTA(s) ${action}d successfully`);
+  };
+
+  const handleDuplicate = async (slug: string) => {
+    await fetch(`/cta-admin/api/cta/${slug}/duplicate`, {
+      method: 'POST',
+    });
+    fetchCtas();
+    showToast(`CTA "${slug}" duplicated successfully`);
+  };
 
   if (loading) {
     return <div className="empty-state"><p>Loading CTAs...</p></div>;
@@ -61,6 +111,29 @@ export default function CtasList() {
         ))}
       </div>
 
+      {selected.size > 0 && (
+        <div
+          style={{
+            background: 'var(--accent-light)',
+            border: '1px solid var(--accent)',
+            borderRadius: 'var(--radius-sm)',
+            padding: '12px 20px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
+          <span style={{ fontWeight: 600 }}>{selected.size} selected</span>
+          <button className="btn btn-sm btn-primary" onClick={() => handleBulkAction('activate')}>
+            Activate
+          </button>
+          <button className="btn btn-sm btn-secondary" onClick={() => handleBulkAction('deactivate')}>
+            Deactivate
+          </button>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon"></div>
@@ -71,6 +144,14 @@ export default function CtasList() {
         <table className="data-table">
           <thead>
             <tr>
+              <th>
+                <input
+                  type="checkbox"
+                  checked={selected.size === filtered.length && filtered.length > 0}
+                  onChange={toggleSelectAll}
+                  style={{ accentColor: 'var(--accent)' }}
+                />
+              </th>
               <th>Name</th>
               <th>Embed Code</th>
               <th>Scope</th>
@@ -83,6 +164,14 @@ export default function CtasList() {
           <tbody>
             {filtered.map((cta) => (
               <tr key={cta.slug}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(cta.slug)}
+                    onChange={() => toggleSelect(cta.slug)}
+                    style={{ accentColor: 'var(--accent)' }}
+                  />
+                </td>
                 <td>
                   <Link href={`/admin/ctas/${cta.slug}`} style={{ fontWeight: 600 }}>
                     {cta.name}
@@ -110,15 +199,39 @@ export default function CtasList() {
                   <span className={`badge badge-${cta.status}`}>{cta.status}</span>
                 </td>
                 <td>{cta.content?.map((c) => c.locale.toUpperCase()).join(', ')}</td>
-                <td>
+                <td style={{ display: 'flex', gap: '8px' }}>
                   <Link href={`/admin/ctas/${cta.slug}`} className="btn btn-sm btn-secondary">
                     Edit
                   </Link>
+                  <button
+                    className="btn btn-sm btn-secondary"
+                    onClick={() => handleDuplicate(cta.slug)}
+                  >
+                    Duplicate
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            background: 'var(--accent)',
+            color: 'white',
+            padding: '12px 24px',
+            borderRadius: 'var(--radius-sm)',
+            zIndex: 1000,
+            fontWeight: 500,
+          }}
+        >
+          {toast}
+        </div>
       )}
     </div>
   );

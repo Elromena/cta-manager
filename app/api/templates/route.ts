@@ -3,6 +3,9 @@ import { getDb } from '@/lib/db';
 import { templates } from '@/drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { STANDARD_TEMPLATES } from '@/lib/templates';
+import { nanoid } from 'nanoid';
+
+const STANDARD_IDS = STANDARD_TEMPLATES.map((t) => t.id);
 
 /**
  * GET /api/templates — List all templates.
@@ -13,8 +16,9 @@ export async function GET() {
     const db = getDb();
     let rows = await db.select().from(templates);
 
-    // Seed defaults if table is empty
-    if (rows.length === 0) {
+    // Seed defaults if no standard templates exist
+    const hasStandard = rows.some((r) => STANDARD_IDS.includes(r.id));
+    if (!hasStandard) {
       for (const t of STANDARD_TEMPLATES) {
         await db.insert(templates).values({
           id: t.id,
@@ -22,15 +26,20 @@ export async function GET() {
           htmlTemplate: t.htmlTemplate,
           css: t.css,
           previewImage: null,
+          category: 'standard',
         });
       }
       rows = await db.select().from(templates);
     }
 
-    // Merge description from STANDARD_TEMPLATES for display
+    // Enrich with description and ensure category
     const enriched = rows.map((row) => {
       const std = STANDARD_TEMPLATES.find((s) => s.id === row.id);
-      return { ...row, description: std?.description || '' };
+      return {
+        ...row,
+        description: std?.description || (row.category === 'custom' ? 'Custom template' : ''),
+        category: STANDARD_IDS.includes(row.id) ? 'standard' : (row.category || 'custom'),
+      };
     });
 
     return NextResponse.json({ templates: enriched });
@@ -38,6 +47,38 @@ export async function GET() {
     console.error('GET /api/templates error:', error);
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: 'Failed to fetch templates', details: message }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/templates — Create a custom template.
+ * Body: { name, htmlTemplate, css? }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const db = getDb();
+    const body = await request.json();
+    const { name, htmlTemplate, css } = body;
+
+    if (!name || !htmlTemplate) {
+      return NextResponse.json({ error: 'Name and HTML template are required' }, { status: 400 });
+    }
+
+    const id = nanoid();
+    await db.insert(templates).values({
+      id,
+      name,
+      htmlTemplate,
+      css: css || '',
+      previewImage: null,
+      category: 'custom',
+    });
+
+    return NextResponse.json({ id, name }, { status: 201 });
+  } catch (error) {
+    console.error('POST /api/templates error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Failed to create template', details: message }, { status: 500 });
   }
 }
 

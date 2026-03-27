@@ -8,7 +8,10 @@ interface Template {
   description: string;
   htmlTemplate: string;
   css: string;
+  category?: string;
 }
+
+const STANDARD_IDS = ['banner', 'card', 'inline', 'image-text'];
 
 const SAMPLE_DATA: Record<string, string> = {
   heading: 'Supercharge Your Campaigns',
@@ -161,7 +164,12 @@ export default function TemplatesEditor() {
                 transition: 'all 0.15s',
               }}
             >
-              {t.name}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {t.name}
+                {!STANDARD_IDS.includes(t.id) && (
+                  <span style={{ fontSize: 9, color: 'var(--warning)', fontWeight: 600, textTransform: 'uppercase' }}>Custom</span>
+                )}
+              </span>
               <div style={{
                 fontSize: 11,
                 marginTop: 2,
@@ -191,9 +199,11 @@ export default function TemplatesEditor() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Action bar */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={handleReset} disabled={saving} className="btn btn-secondary btn-sm" style={{ fontSize: 13 }}>
-                Reset to Default
-              </button>
+              {STANDARD_IDS.includes(selected.id) && (
+                <button onClick={handleReset} disabled={saving} className="btn btn-secondary btn-sm" style={{ fontSize: 13 }}>
+                  Reset to Default
+                </button>
+              )}
               <button onClick={handleSave} disabled={saving} className="btn btn-primary btn-sm" style={{ fontSize: 13 }}>
                 {saving ? 'Saving...' : 'Save Template'}
               </button>

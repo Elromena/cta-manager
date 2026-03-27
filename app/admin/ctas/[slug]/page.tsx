@@ -59,6 +59,14 @@ export default function EditCta() {
   const [previewUrl, setPreviewUrl] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Scheduling state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Save as Template state
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
   // Editable state
   const [name, setName] = useState('');
   const [scope, setScope] = useState('global');
@@ -81,6 +89,8 @@ export default function EditCta() {
         setTemplateId(data.templateId || 'banner');
         setCustomHtml(data.customHtml || '');
         setStatus(data.status || 'active');
+        setStartDate(data.startDate?.slice(0, 16) || '');
+        setEndDate(data.endDate?.slice(0, 16) || '');
 
         const contentMap: Record<string, ContentItem> = {};
         (data.content || []).forEach((c: ContentItem) => {
@@ -131,6 +141,8 @@ export default function EditCta() {
           customHtml: templateType === 'custom' ? customHtml : null,
           status,
           content: contentArray,
+          startDate: startDate ? new Date(startDate).toISOString() : null,
+          endDate: endDate ? new Date(endDate).toISOString() : null,
         }),
       });
 
@@ -150,6 +162,35 @@ export default function EditCta() {
       router.push('/admin/ctas');
     } catch {
       setError('Failed to delete');
+    }
+  };
+
+  const handleDuplicate = async () => {
+    try {
+      const res = await fetch(`/cta-admin/api/cta/${slug}/duplicate`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setToast('CTA duplicated!');
+      router.push(`/admin/ctas/${data.slug}`);
+    } catch {
+      setToast('Failed to duplicate');
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    try {
+      const res = await fetch('/cta-admin/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: templateName, htmlTemplate: customHtml, css: '' }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setShowSaveTemplate(false);
+      setTemplateName('');
+      setToast('Template saved!');
+      setTimeout(() => setToast(''), 3000);
+    } catch {
+      setToast('Failed to save template');
     }
   };
 
@@ -180,6 +221,12 @@ export default function EditCta() {
             disabled={saving}
           >
             {saving ? 'Saving...' : 'Save Changes'}
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={handleDuplicate}
+          >
+            Duplicate
           </button>
           <button
             className="btn btn-danger"
@@ -255,6 +302,18 @@ export default function EditCta() {
             )}
           </div>
 
+          {/* Scheduling */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="form-group">
+              <label>Start Date (optional)</label>
+              <input type="datetime-local" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>End Date (optional)</label>
+              <input type="datetime-local" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+          </div>
+
           {/* Template */}
           <div className="form-group">
             <label>Template</label>
@@ -284,13 +343,32 @@ export default function EditCta() {
                 ))}
               </div>
             ) : (
-              <textarea
-                className="form-textarea"
-                value={customHtml}
-                onChange={(e) => setCustomHtml(e.target.value)}
-                style={{ minHeight: '160px', fontFamily: 'monospace' }}
-                placeholder='<div class="my-cta">{{heading}}</div>'
-              />
+              <>
+                <textarea
+                  className="form-textarea"
+                  value={customHtml}
+                  onChange={(e) => setCustomHtml(e.target.value)}
+                  style={{ minHeight: '160px', fontFamily: 'monospace' }}
+                  placeholder='<div class="my-cta">{{heading}}</div>'
+                />
+                {/* Save as Template */}
+                {!showSaveTemplate ? (
+                  <button className="btn btn-sm btn-secondary" onClick={() => setShowSaveTemplate(true)} style={{ marginTop: '8px' }}>
+                    Save as Template
+                  </button>
+                ) : (
+                  <div style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '16px', marginTop: '8px' }}>
+                    <div className="form-group" style={{ marginBottom: '12px' }}>
+                      <label>Template Name</label>
+                      <input className="form-input" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="My Custom Template" />
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button className="btn btn-sm btn-primary" onClick={handleSaveAsTemplate}>Save Template</button>
+                      <button className="btn btn-sm btn-secondary" onClick={() => setShowSaveTemplate(false)}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

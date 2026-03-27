@@ -110,7 +110,7 @@ export async function PUT(
     const db = getDb();
     const { slug } = await params;
     const body = await request.json();
-    const { name, scope, vertical, templateType, templateId, customHtml, status, content } = body;
+    const { name, scope, vertical, templateType, templateId, customHtml, status, startDate, endDate, content } = body;
 
     const ctaRows = await db.select().from(ctas).where(eq(ctas.slug, slug));
     const cta = ctaRows[0];
@@ -128,6 +128,8 @@ export async function PUT(
         templateId: templateId ?? cta.templateId,
         customHtml: customHtml ?? cta.customHtml,
         status: status ?? cta.status,
+        startDate: startDate !== undefined ? startDate : cta.startDate,
+        endDate: endDate !== undefined ? endDate : cta.endDate,
         updatedAt: new Date().toISOString(),
       })
       .where(eq(ctas.slug, slug));

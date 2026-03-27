@@ -1,0 +1,2 @@
+ALTER TABLE ctas ADD COLUMN start_date TEXT;
+ALTER TABLE ctas ADD COLUMN end_date TEXT;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -10,13 +10,6 @@ const LOCALE_NAMES: Record<string, string> = {
   ko: 'Korean', zh: 'Chinese', ja: 'Japanese', tr: 'Turkish',
 };
 
-const TEMPLATES = [
-  { id: 'banner', name: 'Banner', description: 'Full-width gradient banner with heading, body, and CTA button' },
-  { id: 'card', name: 'Card', description: 'Compact card with optional image, heading, body, and button' },
-  { id: 'inline', name: 'Inline', description: 'Minimal inline CTA that blends with article text' },
-  { id: 'image-text', name: 'Image + Text', description: 'Side-by-side image and text block' },
-];
-
 interface ContentByLocale {
   [locale: string]: {
     heading: string;
@@ -25,6 +18,14 @@ interface ContentByLocale {
     buttonUrl: string;
     imageUrl: string;
   };
+}
+
+interface TemplateItem {
+  id: string;
+  name: string;
+  description?: string;
+  htmlTemplate?: string;
+  isCustom?: boolean;
 }
 
 export default function CreateCta() {
@@ -43,6 +44,43 @@ export default function CreateCta() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+
+  // Scheduling state
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Dynamic template picker state
+  const [availableTemplates, setAvailableTemplates] = useState<TemplateItem[]>([]);
+  const [templateCategory, setTemplateCategory] = useState<'all' | 'standard' | 'custom'>('all');
+
+  // Save as Template state
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+
+  const fetchTemplates = () => {
+    fetch('/cta-admin/api/templates')
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAvailableTemplates(data);
+        } else if (data.templates && Array.isArray(data.templates)) {
+          setAvailableTemplates(data.templates);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchTemplates();
+  }, []);
+
+  const filteredTemplates = availableTemplates.filter((t) => {
+    if (templateCategory === 'all') return true;
+    if (templateCategory === 'custom') return t.isCustom === true;
+    if (templateCategory === 'standard') return !t.isCustom;
+    return true;
+  });
 
   const autoSlug = (val: string) => {
     setName(val);
@@ -77,6 +115,25 @@ export default function CreateCta() {
     });
   };
 
+  const handleSaveAsTemplate = async () => {
+    try {
+      const res = await fetch('/cta-admin/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: templateName, htmlTemplate: customHtml, css: '' }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setShowSaveTemplate(false);
+      setTemplateName('');
+      fetchTemplates();
+      setToast('Template saved!');
+      setTimeout(() => setToast(''), 3000);
+    } catch {
+      setToast('Failed to save template');
+      setTimeout(() => setToast(''), 3000);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -100,6 +157,8 @@ export default function CreateCta() {
           templateId: templateType === 'standard' ? templateId : null,
           customHtml: templateType === 'custom' ? customHtml : null,
           content: contentArray,
+          startDate: startDate ? new Date(startDate).toISOString() : null,
+          endDate: endDate ? new Date(endDate).toISOString() : null,
         }),
       });
 
@@ -128,6 +187,16 @@ export default function CreateCta() {
           <p>Set up a new call-to-action</p>
         </div>
       </div>
+
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '20px', right: '20px', background: 'var(--accent)',
+          color: '#fff', padding: '12px 24px', borderRadius: 'var(--radius)', zIndex: 1000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        }}>
+          {toast}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} style={{ maxWidth: '720px' }}>
         {/* Basic Info */}
@@ -181,6 +250,18 @@ export default function CreateCta() {
           )}
         </div>
 
+        {/* Scheduling */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div className="form-group">
+            <label>Start Date (optional)</label>
+            <input type="datetime-local" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label>End Date (optional)</label>
+            <input type="datetime-local" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+        </div>
+
         {/* Template Selection */}
         <div className="form-group">
           <label>Template Type</label>
@@ -202,32 +283,86 @@ export default function CreateCta() {
           </div>
 
           {templateType === 'standard' ? (
-            <div className="template-grid">
-              {TEMPLATES.map((t) => (
-                <div
-                  key={t.id}
-                  className={`template-card ${templateId === t.id ? 'selected' : ''}`}
-                  onClick={() => setTemplateId(t.id)}
-                >
-                  <h4>{t.name}</h4>
-                  <p>{t.description}</p>
-                </div>
-              ))}
-            </div>
+            <>
+              {/* Category filter buttons */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                {(['all', 'standard', 'custom'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={`btn btn-sm ${templateCategory === cat ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setTemplateCategory(cat)}
+                  >
+                    {cat === 'all' ? 'All' : cat === 'standard' ? 'Standard' : 'Custom'}
+                  </button>
+                ))}
+              </div>
+              <div className="template-grid">
+                {filteredTemplates.map((t) => (
+                  <div
+                    key={t.id}
+                    className={`template-card ${templateId === t.id ? 'selected' : ''}`}
+                    onClick={() => setTemplateId(t.id)}
+                  >
+                    <h4>
+                      {t.name}
+                      {t.isCustom && (
+                        <span style={{
+                          marginLeft: '8px',
+                          fontSize: '11px',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: 'var(--warning, #f59e0b)',
+                          color: '#fff',
+                          fontWeight: 500,
+                        }}>
+                          Custom
+                        </span>
+                      )}
+                    </h4>
+                    <p>{t.description || t.htmlTemplate?.slice(0, 60) || ''}</p>
+                  </div>
+                ))}
+                {filteredTemplates.length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', gridColumn: '1 / -1' }}>
+                    No templates found in this category.
+                  </p>
+                )}
+              </div>
+            </>
           ) : (
-            <div className="form-group">
-              <label>Custom HTML Template</label>
-              <textarea
-                className="form-textarea"
-                value={customHtml}
-                onChange={(e) => setCustomHtml(e.target.value)}
-                placeholder={`<div class="my-cta">\n  <h3>{{heading}}</h3>\n  <p>{{body}}</p>\n  <a href="{{buttonUrl}}">{{buttonText}}</a>\n</div>`}
-                style={{ minHeight: '200px', fontFamily: 'monospace' }}
-              />
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                Use {'{{heading}}'}, {'{{body}}'}, {'{{buttonText}}'}, {'{{buttonUrl}}'}, {'{{imageUrl}}'} as variables
-              </p>
-            </div>
+            <>
+              <div className="form-group">
+                <label>Custom HTML Template</label>
+                <textarea
+                  className="form-textarea"
+                  value={customHtml}
+                  onChange={(e) => setCustomHtml(e.target.value)}
+                  placeholder={`<div class="my-cta">\n  <h3>{{heading}}</h3>\n  <p>{{body}}</p>\n  <a href="{{buttonUrl}}">{{buttonText}}</a>\n</div>`}
+                  style={{ minHeight: '200px', fontFamily: 'monospace' }}
+                />
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                  Use {'{{heading}}'}, {'{{body}}'}, {'{{buttonText}}'}, {'{{buttonUrl}}'}, {'{{imageUrl}}'} as variables
+                </p>
+              </div>
+              {/* Save as Template */}
+              {!showSaveTemplate ? (
+                <button type="button" className="btn btn-sm btn-secondary" onClick={() => setShowSaveTemplate(true)} style={{ marginTop: '8px' }}>
+                  Save as Template
+                </button>
+              ) : (
+                <div style={{ background: 'var(--accent-light)', border: '1px solid var(--accent)', borderRadius: 'var(--radius-sm)', padding: '16px', marginTop: '8px' }}>
+                  <div className="form-group" style={{ marginBottom: '12px' }}>
+                    <label>Template Name</label>
+                    <input className="form-input" value={templateName} onChange={(e) => setTemplateName(e.target.value)} placeholder="My Custom Template" />
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button type="button" className="btn btn-sm btn-primary" onClick={handleSaveAsTemplate}>Save Template</button>
+                    <button type="button" className="btn btn-sm btn-secondary" onClick={() => setShowSaveTemplate(false)}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

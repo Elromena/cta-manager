@@ -28,6 +28,11 @@ export async function POST(request: NextRequest) {
       const cta = ctaRows[0];
       if (!cta || cta.status !== 'active') continue;
 
+      // Check scheduling window
+      const now = new Date().toISOString();
+      if (cta.startDate && now < cta.startDate) continue;
+      if (cta.endDate && now > cta.endDate) continue;
+
       // Get content for requested locale, fallback to 'en'
       let contentRows = await db
         .select()

@@ -21,6 +21,12 @@ interface PageBreakdown {
   totalClicks: number;
 }
 
+interface LocaleBreakdown {
+  locale: string;
+  impressions: number;
+  clicks: number;
+}
+
 export default function AnalyticsPage() {
   const [overview, setOverview] = useState<CtaStat[]>([]);
   const [selectedSlug, setSelectedSlug] = useState<string>('');
@@ -54,6 +60,19 @@ export default function AnalyticsPage() {
 
   const totalImpressions = overview.reduce((s, v) => s + (v.totalImpressions || 0), 0);
   const totalClicks = overview.reduce((s, v) => s + (v.totalClicks || 0), 0);
+
+  // Locale breakdown derived from page breakdown
+  const localeBreakdown: LocaleBreakdown[] = detail
+    ? Object.values(
+        detail.pageBreakdown.reduce((acc, p) => {
+          const key = p.locale || 'en';
+          if (!acc[key]) acc[key] = { locale: key, impressions: 0, clicks: 0 };
+          acc[key].impressions += p.totalImpressions;
+          acc[key].clicks += p.totalClicks;
+          return acc;
+        }, {} as Record<string, LocaleBreakdown>)
+      ).sort((a, b) => b.impressions - a.impressions)
+    : [];
 
   if (loading) return <div className="empty-state"><p>Loading analytics...</p></div>;
 
@@ -92,7 +111,7 @@ export default function AnalyticsPage() {
           <div className="stat-value">
             {totalImpressions > 0
               ? ((totalClicks / totalImpressions) * 100).toFixed(1) + '%'
-              : '—'}
+              : '\u2014'}
           </div>
         </div>
         <div className="stat-card">
@@ -120,7 +139,7 @@ export default function AnalyticsPage() {
                 .map((stat) => {
                   const ctr = stat.totalImpressions > 0
                     ? ((stat.totalClicks / stat.totalImpressions) * 100).toFixed(1) + '%'
-                    : '—';
+                    : '\u2014';
                   return (
                     <tr
                       key={stat.ctaSlug}
@@ -154,7 +173,7 @@ export default function AnalyticsPage() {
                 {selectedSlug}
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                Used in {detail.articlesUsing} articles · {days}-day period
+                Used in {detail.articlesUsing} articles &middot; {days}-day period
               </p>
 
               <div className="stats-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr', marginBottom: '20px' }}>
@@ -178,32 +197,73 @@ export default function AnalyticsPage() {
                 </div>
               </div>
 
-              {/* Daily Trend (simple bar representation) */}
+              {/* Daily Trend — dual bars */}
               {detail.dailyTrend.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{ fontSize: '14px', marginBottom: '12px', color: 'var(--text-secondary)' }}>
-                    Daily Impressions
+                  <h4 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>
+                    Daily Trend
                   </h4>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '80px' }}>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)' }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--accent)', display: 'inline-block' }} />
+                      Impressions
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)', marginLeft: 12 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: 'var(--success)', display: 'inline-block' }} />
+                      Clicks
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '80px' }}>
                     {detail.dailyTrend.map((d) => {
-                      const maxImp = Math.max(...detail.dailyTrend.map((t) => t.impressions || 1));
-                      const height = ((d.impressions || 0) / maxImp) * 100;
+                      const maxVal = Math.max(...detail.dailyTrend.map((t) => Math.max(t.impressions || 1, t.clicks || 1)));
+                      const impHeight = ((d.impressions || 0) / maxVal) * 100;
+                      const clickHeight = ((d.clicks || 0) / maxVal) * 100;
                       return (
                         <div
                           key={d.date}
                           title={`${d.date}: ${d.impressions} imp, ${d.clicks} clicks`}
-                          style={{
-                            flex: 1,
-                            height: `${Math.max(height, 2)}%`,
-                            background: 'var(--accent)',
-                            borderRadius: '2px 2px 0 0',
-                            minWidth: '4px',
-                            opacity: 0.8,
-                          }}
-                        />
+                          style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: '1px', minWidth: '6px' }}
+                        >
+                          <div style={{
+                            flex: 1, height: `${Math.max(impHeight, 3)}%`,
+                            background: 'var(--accent)', borderRadius: '2px 2px 0 0', opacity: 0.8,
+                          }} />
+                          <div style={{
+                            flex: 1, height: `${Math.max(clickHeight, 3)}%`,
+                            background: 'var(--success)', borderRadius: '2px 2px 0 0', opacity: 0.8,
+                          }} />
+                        </div>
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Locale Breakdown */}
+              {localeBreakdown.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-secondary)' }}>
+                    By Locale
+                  </h4>
+                  {localeBreakdown.map((l) => (
+                    <div
+                      key={l.locale}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '8px 0', borderBottom: '1px solid var(--border)', fontSize: '13px',
+                      }}
+                    >
+                      <span className="badge" style={{ fontSize: 11, padding: '2px 8px', minWidth: 32, textAlign: 'center' }}>
+                        {l.locale.toUpperCase()}
+                      </span>
+                      <span style={{ flex: 1 }}>
+                        {l.impressions.toLocaleString()} imp &middot; {l.clicks.toLocaleString()} clicks
+                      </span>
+                      <span style={{ color: 'var(--accent)', fontWeight: 600 }}>
+                        {l.impressions > 0 ? ((l.clicks / l.impressions) * 100).toFixed(1) + '%' : '\u2014'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -227,10 +287,10 @@ export default function AnalyticsPage() {
                       {p.pageUrl}
                     </div>
                     <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
-                      {p.locale?.toUpperCase()} · {p.totalImpressions} imp · {p.totalClicks} clicks ·{' '}
+                      {p.locale?.toUpperCase()} &middot; {p.totalImpressions} imp &middot; {p.totalClicks} clicks &middot;{' '}
                       {p.totalImpressions > 0
                         ? ((p.totalClicks / p.totalImpressions) * 100).toFixed(1) + '% CTR'
-                        : '—'}
+                        : '\u2014'}
                     </div>
                   </div>
                 ))}
