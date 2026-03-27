@@ -1,3 +1,3 @@
 interface CloudflareEnv {
-  DB: D1Database;
+  DATABASE: D1Database;
 }

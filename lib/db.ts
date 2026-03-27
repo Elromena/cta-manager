@@ -7,12 +7,6 @@ import * as schema from '@/drizzle/schema';
  * Must be called inside a request handler (API route, server component, etc.)
  */
 export function getDb() {
-  const ctx = getCloudflareContext();
-  const db = (ctx as any).env?.DB;
-  if (!db) {
-    throw new Error(
-      `D1 binding "DB" not found. Context keys: ${JSON.stringify(Object.keys((ctx as any).env || {}))}. Full ctx keys: ${JSON.stringify(Object.keys(ctx || {}))}`
-    );
-  }
-  return drizzle(db, { schema });
+  const { env } = getCloudflareContext();
+  return drizzle(env.DATABASE, { schema });
 }
