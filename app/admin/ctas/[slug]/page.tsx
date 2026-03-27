@@ -70,7 +70,7 @@ export default function EditCta() {
   const [content, setContent] = useState<Record<string, ContentItem>>({});
 
   useEffect(() => {
-    fetch(`/api/cta/${slug}`)
+    fetch(`/cta-admin/api/cta/${slug}`)
       .then((r) => r.json())
       .then((data) => {
         setCta(data);
@@ -119,7 +119,7 @@ export default function EditCta() {
     }));
 
     try {
-      const res = await fetch(`/api/cta/${slug}`, {
+      const res = await fetch(`/cta-admin/api/cta/${slug}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -146,7 +146,7 @@ export default function EditCta() {
 
   const handleDelete = async () => {
     try {
-      await fetch(`/api/cta/${slug}`, { method: 'DELETE' });
+      await fetch(`/cta-admin/api/cta/${slug}`, { method: 'DELETE' });
       router.push('/admin/ctas');
     } catch {
       setError('Failed to delete');

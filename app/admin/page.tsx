@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface CtaSummary {
   slug: string;
@@ -25,8 +26,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/cta').then((r) => r.json()),
-      fetch('/api/analytics?days=30').then((r) => r.json()).catch(() => ({ stats: [] })),
+      fetch('/cta-admin/api/cta').then((r) => r.json()),
+      fetch('/cta-admin/api/analytics?days=30').then((r) => r.json()).catch(() => ({ stats: [] })),
     ]).then(([ctaData, analyticsData]) => {
       setCtas(ctaData.ctas || []);
       setStats(analyticsData.stats || []);
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
           <h1>Dashboard</h1>
           <p>Overview of your CTA performance</p>
         </div>
-        <a href="/admin/ctas/create" className="btn btn-primary">+ Create CTA</a>
+        <Link href="/admin/ctas/create" className="btn btn-primary">+ Create CTA</Link>
       </div>
 
       <div className="stats-grid">
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
           <div className="empty-icon">🎯</div>
           <h3>No CTAs yet</h3>
           <p>Create your first CTA to get started</p>
-          <a href="/admin/ctas/create" className="btn btn-primary">Create CTA</a>
+          <Link href="/admin/ctas/create" className="btn btn-primary">Create CTA</Link>
         </div>
       ) : (
         <table className="data-table">
@@ -105,9 +106,9 @@ export default function AdminDashboard() {
               return (
                 <tr key={cta.slug}>
                   <td>
-                    <a href={`/admin/ctas/${cta.slug}`} style={{ fontWeight: 600 }}>
+                    <Link href={`/admin/ctas/${cta.slug}`} style={{ fontWeight: 600 }}>
                       {cta.name}
-                    </a>
+                    </Link>
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: '13px', color: 'var(--accent)' }}>
                     {cta.slug}

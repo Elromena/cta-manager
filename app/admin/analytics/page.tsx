@@ -34,7 +34,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/analytics?days=${days}`)
+    fetch(`/cta-admin/api/analytics?days=${days}`)
       .then((r) => r.json())
       .then((data) => {
         setOverview(data.stats || []);
@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
       setDetail(null);
       return;
     }
-    fetch(`/api/analytics?slug=${selectedSlug}&days=${days}`)
+    fetch(`/cta-admin/api/analytics?slug=${selectedSlug}&days=${days}`)
       .then((r) => r.json())
       .then((data) => setDetail(data));
   }, [selectedSlug, days]);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface Cta {
   slug: string;
@@ -20,7 +21,7 @@ export default function CtasList() {
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
-    fetch('/api/cta')
+    fetch('/cta-admin/api/cta')
       .then((r) => r.json())
       .then((data) => {
         setCtas(data.ctas || []);
@@ -45,7 +46,7 @@ export default function CtasList() {
           <h1>CTAs</h1>
           <p>{ctas.length} total CTAs</p>
         </div>
-        <a href="/admin/ctas/create" className="btn btn-primary">+ Create CTA</a>
+        <Link href="/admin/ctas/create" className="btn btn-primary">+ Create CTA</Link>
       </div>
 
       <div style={{ marginBottom: '20px', display: 'flex', gap: '8px' }}>
@@ -83,9 +84,9 @@ export default function CtasList() {
             {filtered.map((cta) => (
               <tr key={cta.slug}>
                 <td>
-                  <a href={`/admin/ctas/${cta.slug}`} style={{ fontWeight: 600 }}>
+                  <Link href={`/admin/ctas/${cta.slug}`} style={{ fontWeight: 600 }}>
                     {cta.name}
-                  </a>
+                  </Link>
                 </td>
                 <td>
                   <code
@@ -110,9 +111,9 @@ export default function CtasList() {
                 </td>
                 <td>{cta.content?.map((c) => c.locale.toUpperCase()).join(', ')}</td>
                 <td>
-                  <a href={`/admin/ctas/${cta.slug}`} className="btn btn-sm btn-secondary">
+                  <Link href={`/admin/ctas/${cta.slug}`} className="btn btn-sm btn-secondary">
                     Edit
-                  </a>
+                  </Link>
                 </td>
               </tr>
             ))}

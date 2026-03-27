@@ -20,14 +20,14 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/cta-admin/cta-loader.js',
+        source: '/cta-loader.js',
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Cache-Control', value: 'public, max-age=300' },
         ],
       },
       {
-        source: '/cta-admin/api/:path*',
+        source: '/api/:path*',
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },
           { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },

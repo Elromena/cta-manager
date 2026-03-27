@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const LOCALES = ['en', 'ru', 'es', 'ko', 'zh', 'ja', 'tr'];
 const LOCALE_NAMES: Record<string, string> = {
@@ -87,7 +88,7 @@ export default function CreateCta() {
     }));
 
     try {
-      const res = await fetch('/api/cta', {
+      const res = await fetch('/cta-admin/api/cta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -347,7 +348,7 @@ export default function CreateCta() {
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? 'Creating...' : 'Create CTA'}
           </button>
-          <a href="/admin/ctas" className="btn btn-secondary">Cancel</a>
+          <Link href="/admin/ctas" className="btn btn-secondary">Cancel</Link>
         </div>
       </form>
     </div>

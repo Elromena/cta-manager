@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface UsageEntry {
   ctaSlug: string;
@@ -31,7 +32,7 @@ export default function PostsLibrary() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/cta').then((r) => r.json()),
+      fetch('/cta-admin/api/cta').then((r) => r.json()),
     ]).then(([ctaData]) => {
       const allCtas: CtaInfo[] = ctaData.ctas || [];
       const map: Record<string, string> = {};
@@ -177,14 +178,14 @@ export default function PostsLibrary() {
                     <td>{p.locale?.toUpperCase()}</td>
                     <td>
                       {p.ctas.map((slug) => (
-                        <a
+                        <Link
                           key={slug}
                           href={`/admin/ctas/${slug}`}
                           className="badge badge-global"
                           style={{ marginRight: '4px', textDecoration: 'none' }}
                         >
                           {ctaMap[slug] || slug}
-                        </a>
+                        </Link>
                       ))}
                     </td>
                     <td style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -222,7 +223,7 @@ export default function PostsLibrary() {
               {filteredCtas.map((c) => (
                 <tr key={c.slug}>
                   <td>
-                    <a href={`/admin/ctas/${c.slug}`} style={{ fontWeight: 600 }}>{c.name}</a>
+                    <Link href={`/admin/ctas/${c.slug}`} style={{ fontWeight: 600 }}>{c.name}</Link>
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: '13px', color: 'var(--accent)' }}>
                     {c.slug}

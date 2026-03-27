@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
@@ -94,13 +95,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <ul className="sidebar-nav">
           {navItems.map((item) => (
             <li key={item.href}>
-              <a
+              <Link
                 href={item.href}
                 className={pathname === item.href ? 'active' : ''}
               >
                 <span className="nav-icon">{item.icon}</span>
                 {item.label}
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
