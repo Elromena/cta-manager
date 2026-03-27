@@ -117,16 +117,10 @@
     })
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        // Inject combined CSS
-        if (data.css) {
-          var style = document.createElement('style');
-          style.id = 'bca-cta-styles';
-          style.textContent = data.css;
-          document.head.appendChild(style);
-        }
-
-        // Render each CTA
+        // Render each CTA inside Shadow DOM to isolate from Webflow styles
         var ctaData = data.ctas || {};
+        var combinedCss = data.css || '';
+
         for (var ctaKey in ctaData) {
           var cta = ctaData[ctaKey];
           var targets = elMap[ctaKey];
@@ -143,20 +137,38 @@
             el.style.backgroundSize = '';
             el.style.animation = '';
 
-            // Set HTML with fade-in
-            el.innerHTML = cta.html;
+            // Create Shadow DOM for style isolation
+            var shadow = el.attachShadow({ mode: 'open' });
+
+            // Inject CSS reset + CTA styles inside shadow
+            var styleEl = document.createElement('style');
+            styleEl.textContent = [
+              // Minimal reset inside shadow to prevent inherited styles
+              ':host { display: block; all: initial; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }',
+              '*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }',
+              'a { text-decoration: none; color: inherit; }',
+              'img { max-width: 100%; height: auto; }',
+              combinedCss,
+              cta.css || '',
+            ].join('\n');
+            shadow.appendChild(styleEl);
+
+            // Inject CTA HTML
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML = cta.html;
+            shadow.appendChild(wrapper);
+
+            // Fade-in on the host element
             el.style.opacity = '0';
             el.style.transition = 'opacity 0.4s ease';
-
-            // Trigger fade-in
             requestAnimationFrame(function (element) {
               return function () { element.style.opacity = '1'; };
             }(el));
 
-            // Admin preview highlight
+            // Admin preview highlight (on outer element, not shadow)
             addAdminHighlight(el);
 
-            // Set up tracking (with variant)
+            // Set up tracking (with variant) — clicks bubble through shadow DOM
             setupTracking(el, elSlug, locale, elVariant);
           }
         }
@@ -190,17 +202,17 @@
       observer.observe(el);
     }
 
-    // Click tracking
+    // Click tracking (composedPath for Shadow DOM support)
     el.addEventListener('click', function (e) {
-      var target = e.target;
-      // Check if clicked on a link/button
-      while (target && target !== el) {
-        if (target.tagName === 'A' || target.tagName === 'BUTTON') {
+      var path = e.composedPath ? e.composedPath() : [];
+      for (var p = 0; p < path.length; p++) {
+        var node = path[p];
+        if (node === el) break;
+        if (node.tagName === 'A' || node.tagName === 'BUTTON') {
           queueEvent(slug, 'click', locale, variant);
-          flushEvents(); // Flush immediately on click
+          flushEvents();
           break;
         }
-        target = target.parentElement;
       }
     });
   }
