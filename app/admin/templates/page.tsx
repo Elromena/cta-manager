@@ -270,7 +270,7 @@ export default function TemplatesListPage() {
             color: 'var(--text-muted)',
           }}
         >
-          <div style={{ fontSize: 40, marginBottom: 12 }}>&#128196;</div>
+          <div style={{ fontSize: 40, marginBottom: 12, color: 'var(--text-muted)' }}></div>
           <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: 'var(--text-secondary)' }}>
             No templates found
           </h3>

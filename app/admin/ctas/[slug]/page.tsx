@@ -9,12 +9,12 @@ const LOCALE_NAMES: Record<string, string> = {
   ko: 'Korean', zh: 'Chinese', ja: 'Japanese', tr: 'Turkish',
 };
 
-const TEMPLATES = [
-  { id: 'banner', name: 'Banner', description: 'Full-width gradient banner' },
-  { id: 'card', name: 'Card', description: 'Compact card with image' },
-  { id: 'inline', name: 'Inline', description: 'Minimal inline CTA' },
-  { id: 'image-text', name: 'Image + Text', description: 'Side-by-side layout' },
-];
+interface TemplateItem {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+}
 
 interface ContentItem {
   locale: string;
@@ -69,6 +69,9 @@ export default function EditCta() {
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
 
+  // Dynamic templates
+  const [availableTemplates, setAvailableTemplates] = useState<TemplateItem[]>([]);
+
   // Editable state
   const [name, setName] = useState('');
   const [scope, setScope] = useState('global');
@@ -80,6 +83,11 @@ export default function EditCta() {
   const [content, setContent] = useState<Record<string, ContentItem>>({});
 
   useEffect(() => {
+    fetch('/cta-admin/api/templates')
+      .then((r) => r.json())
+      .then((data) => setAvailableTemplates(data.templates || []))
+      .catch(() => {});
+
     fetch(`/cta-admin/api/cta/${slug}`)
       .then((r) => r.json())
       .then((data) => {
@@ -350,16 +358,29 @@ export default function EditCta() {
             </div>
             {templateType === 'standard' ? (
               <div className="template-grid">
-                {TEMPLATES.map((t) => (
+                {availableTemplates.map((t) => (
                   <div
                     key={t.id}
                     className={`template-card ${templateId === t.id ? 'selected' : ''}`}
                     onClick={() => setTemplateId(t.id)}
                   >
-                    <h4>{t.name}</h4>
-                    <p>{t.description}</p>
+                    <h4>
+                      {t.name}
+                      {t.category === 'custom' && (
+                        <span style={{
+                          marginLeft: '8px', fontSize: '11px', padding: '2px 6px',
+                          borderRadius: '4px', background: 'var(--warning)', color: '#fff', fontWeight: 500,
+                        }}>Custom</span>
+                      )}
+                    </h4>
+                    <p>{t.description || ''}</p>
                   </div>
                 ))}
+                {availableTemplates.length === 0 && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '14px', gridColumn: '1 / -1' }}>
+                    Loading templates...
+                  </p>
+                )}
               </div>
             ) : (
               <>
