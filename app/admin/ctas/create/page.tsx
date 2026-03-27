@@ -194,9 +194,49 @@ export default function CreateCta() {
     }
   };
 
+  const [showPreview, setShowPreview] = useState(false);
+
   const currentContent = content[activeLocale] || {
     heading: '', body: '', buttonText: '', buttonUrl: '', imageUrl: '', imageFit: 'cover',
   };
+
+  // Live preview rendering
+  function renderPreview(): { html: string; css: string } {
+    const data: Record<string, string> = {
+      heading: currentContent.heading || 'Your Heading Here',
+      body: currentContent.body || 'Your body text will appear here.',
+      buttonText: currentContent.buttonText || 'Click Here',
+      buttonUrl: currentContent.buttonUrl || '#',
+      imageUrl: currentContent.imageUrl || '',
+      imageFit: currentContent.imageFit || 'cover',
+    };
+
+    let html = '';
+    let css = '';
+
+    if (templateType === 'custom' && customHtml) {
+      html = customHtml;
+    } else {
+      const tmpl = availableTemplates.find((t) => t.id === templateId);
+      if (tmpl) {
+        html = (tmpl as any).htmlTemplate || '';
+        css = (tmpl as any).css || '';
+      }
+    }
+
+    if (!html) return { html: '<p style="color:#9ca3af;text-align:center;padding:40px;">Select a template and add content to see a preview</p>', css: '' };
+
+    // Render conditional sections: {{#var}}...{{/var}}
+    let rendered = html.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_: string, key: string, content: string) => {
+      return data[key] ? content.replace(/\{\{(\w+)\}\}/g, (_m: string, k: string) => data[k] || '') : '';
+    });
+    // Render simple variables: {{var}}
+    rendered = rendered.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => data[key] || '');
+
+    return { html: rendered, css };
+  }
+
+  const preview = renderPreview();
 
   return (
     <div>
@@ -205,6 +245,13 @@ export default function CreateCta() {
           <h1>Create CTA</h1>
           <p>Set up a new call-to-action</p>
         </div>
+        <button
+          type="button"
+          className={`btn ${showPreview ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setShowPreview(!showPreview)}
+        >
+          {showPreview ? 'Hide Preview' : 'Show Preview'}
+        </button>
       </div>
 
       {toast && (
@@ -214,6 +261,20 @@ export default function CreateCta() {
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
         }}>
           {toast}
+        </div>
+      )}
+
+      {/* Live Preview Panel */}
+      {showPreview && (
+        <div style={{
+          background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+          padding: '24px', marginBottom: '24px',
+        }}>
+          <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '16px' }}>
+            Live Preview — {activeLocale.toUpperCase()}
+          </div>
+          <style dangerouslySetInnerHTML={{ __html: preview.css }} />
+          <div dangerouslySetInnerHTML={{ __html: preview.html }} />
         </div>
       )}
 

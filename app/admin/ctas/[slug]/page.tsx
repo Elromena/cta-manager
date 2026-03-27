@@ -230,6 +230,42 @@ export default function EditCta() {
 
   const enabledLocales = Object.keys(content);
 
+  // Live preview rendering
+  function renderPreview(): { html: string; css: string } {
+    const data: Record<string, string> = {
+      heading: currentContent.heading || 'Your Heading Here',
+      body: currentContent.body || 'Your body text will appear here.',
+      buttonText: currentContent.buttonText || 'Click Here',
+      buttonUrl: currentContent.buttonUrl || '#',
+      imageUrl: currentContent.imageUrl || '',
+      imageFit: currentContent.imageFit || 'cover',
+    };
+
+    let html = '';
+    let css = '';
+
+    if (templateType === 'custom' && customHtml) {
+      html = customHtml;
+    } else {
+      const tmpl = availableTemplates.find((t: any) => t.id === templateId);
+      if (tmpl) {
+        html = (tmpl as any).htmlTemplate || '';
+        css = (tmpl as any).css || '';
+      }
+    }
+
+    if (!html) return { html: '<p style="color:#9ca3af;text-align:center;padding:40px;">Add content to see a preview</p>', css: '' };
+
+    let rendered = html.replace(/\{\{#(\w+)\}\}([\s\S]*?)\{\{\/\1\}\}/g, (_: string, key: string, content: string) => {
+      return data[key] ? content.replace(/\{\{(\w+)\}\}/g, (_m: string, k: string) => data[k] || '') : '';
+    });
+    rendered = rendered.replace(/\{\{(\w+)\}\}/g, (_: string, key: string) => data[key] || '');
+
+    return { html: rendered, css };
+  }
+
+  const preview = renderPreview();
+
   return (
     <div>
       <div className="page-header">
@@ -559,8 +595,22 @@ export default function EditCta() {
           {error && <p style={{ color: 'var(--danger)', marginTop: '8px' }}>{error}</p>}
         </div>
 
-        {/* Right: Usage & Preview Panel */}
+        {/* Right: Preview & Usage Panel */}
         <div>
+          {/* Live Preview */}
+          <div style={{
+            background: '#fff', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
+            padding: '20px', marginBottom: '20px',
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Live Preview — {activeLocale.toUpperCase()}
+            </div>
+            <div style={{ transform: 'scale(0.85)', transformOrigin: 'top left', width: '117.6%' }}>
+              <style dangerouslySetInnerHTML={{ __html: preview.css }} />
+              <div dangerouslySetInnerHTML={{ __html: preview.html }} />
+            </div>
+          </div>
+
           {/* Usage */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px', marginBottom: '20px' }}>
             <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>
