@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { ctas, ctaContent, ctaUsage } from '@/drizzle/schema';
+import { ctas, ctaContent, ctaUsage, templates } from '@/drizzle/schema';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { STANDARD_TEMPLATES, renderTemplate } from '@/lib/templates';
@@ -63,16 +63,31 @@ export async function GET(
           imageUrl: content.imageUrl || '',
         });
       } else {
-        const template = STANDARD_TEMPLATES.find((t) => t.id === cta.templateId);
-        if (template) {
-          html = renderTemplate(template.htmlTemplate, {
+        // Try DB first, fallback to hardcoded defaults
+        let tmplHtml = '';
+        let tmplCss = '';
+
+        const dbTemplate = await db.select().from(templates).where(eq(templates.id, cta.templateId || 'banner'));
+        if (dbTemplate.length > 0) {
+          tmplHtml = dbTemplate[0].htmlTemplate;
+          tmplCss = dbTemplate[0].css || '';
+        } else {
+          const fallback = STANDARD_TEMPLATES.find((t) => t.id === cta.templateId);
+          if (fallback) {
+            tmplHtml = fallback.htmlTemplate;
+            tmplCss = fallback.css;
+          }
+        }
+
+        if (tmplHtml) {
+          html = renderTemplate(tmplHtml, {
             heading: content.heading || '',
             body: content.body || '',
             buttonText: content.buttonText || '',
             buttonUrl: content.buttonUrl || '',
             imageUrl: content.imageUrl || '',
           });
-          css = template.css;
+          css = tmplCss;
         }
       }
 
