@@ -130,13 +130,13 @@ export default function PostsLibrary() {
           className={`btn btn-sm ${view === 'posts' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setView('posts')}
         >
-          📚 Posts → CTAs
+          Posts → CTAs
         </button>
         <button
           className={`btn btn-sm ${view === 'ctas' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setView('ctas')}
         >
-          🎯 CTAs → Posts
+          CTAs → Posts
         </button>
         <input
           className="form-input"
@@ -154,7 +154,7 @@ export default function PostsLibrary() {
           </p>
           {filteredPosts.length === 0 ? (
             <div className="empty-state">
-              <div className="empty-icon">📚</div>
+              <div className="empty-icon"></div>
               <h3>No posts detected</h3>
               <p>CTAs will appear here once they&apos;re loaded on live pages</p>
             </div>
@@ -196,7 +196,7 @@ export default function PostsLibrary() {
                         className="btn btn-sm btn-secondary"
                         onClick={() => setPreviewUrl(`${p.pageUrl}?admin-preview=true`)}
                       >
-                        👁
+                        View
                       </button>
                     </td>
                   </tr>

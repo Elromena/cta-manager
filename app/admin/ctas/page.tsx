@@ -63,7 +63,7 @@ export default function CtasList() {
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🎯</div>
+          <div className="empty-icon"></div>
           <h3>No CTAs found</h3>
           <p>{filter !== 'all' ? 'Try changing the filter' : 'Create your first CTA'}</p>
         </div>

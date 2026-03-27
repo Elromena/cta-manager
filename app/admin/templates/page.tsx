@@ -236,7 +236,7 @@ export default function TemplatesEditor() {
                 flex: 1, minHeight: 300,
                 fontFamily: "'SF Mono', 'Fira Code', 'Consolas', monospace",
                 fontSize: 13, lineHeight: 1.6, padding: 20,
-                background: '#1e1e2e', color: '#cdd6f4',
+                background: '#f8f9fa', color: '#1e293b',
                 border: '1px solid var(--border)', borderRadius: 8,
                 resize: 'vertical', tabSize: 2,
                 whiteSpace: 'pre', overflowX: 'auto',

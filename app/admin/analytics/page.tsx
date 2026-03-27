@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
               padding: '24px',
             }}>
               <h3 style={{ fontSize: '16px', marginBottom: '4px' }}>
-                📊 {selectedSlug}
+                {selectedSlug}
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
                 Used in {detail.articlesUsing} articles · {days}-day period

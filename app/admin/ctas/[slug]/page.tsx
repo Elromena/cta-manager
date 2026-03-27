@@ -200,7 +200,7 @@ export default function EditCta() {
           marginBottom: '24px',
         }}>
           <p style={{ marginBottom: '12px' }}>
-            ⚠️ This CTA is used in <strong>{cta?.usage?.length || 0} articles</strong>.
+            Warning: This CTA is used in <strong>{cta?.usage?.length || 0} articles</strong>.
             Are you sure you want to delete it?
           </p>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -384,7 +384,7 @@ export default function EditCta() {
           {/* Usage */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '20px', marginBottom: '20px' }}>
             <h3 style={{ fontSize: '16px', marginBottom: '16px' }}>
-              📚 Used in {cta?.usage?.length || 0} pages
+              Used in {cta?.usage?.length || 0} pages
             </h3>
             {(!cta?.usage || cta.usage.length === 0) ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
@@ -437,7 +437,7 @@ export default function EditCta() {
         </div>
       </div>
 
-      {toast && <div className="toast">✅ {toast}</div>}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }

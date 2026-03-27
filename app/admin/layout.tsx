@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
       <div className="login-page">
         <div className="login-card">
-          <h1>🔐 CTA Manager</h1>
+          <h1>CTA Manager</h1>
           <p>Enter the admin password to continue</p>
           <form onSubmit={handleLogin}>
             <div className="form-group">
@@ -78,11 +78,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const navItems = [
-    { href: '/admin', label: 'Dashboard', icon: '📊' },
-    { href: '/admin/ctas', label: 'CTAs', icon: '🎯' },
-    { href: '/admin/posts', label: 'Posts Library', icon: '📚' },
-    { href: '/admin/templates', label: 'Templates', icon: '🎨' },
-    { href: '/admin/analytics', label: 'Analytics', icon: '📈' },
+    { href: '/admin', label: 'Dashboard' },
+    { href: '/admin/ctas', label: 'CTAs' },
+    { href: '/admin/posts', label: 'Posts Library' },
+    { href: '/admin/templates', label: 'Templates' },
+    { href: '/admin/analytics', label: 'Analytics' },
   ];
 
   return (
@@ -99,7 +99,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 href={item.href}
                 className={pathname === item.href ? 'active' : ''}
               >
-                <span className="nav-icon">{item.icon}</span>
                 {item.label}
               </Link>
             </li>

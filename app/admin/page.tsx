@@ -82,7 +82,7 @@ export default function AdminDashboard() {
 
       {ctas.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🎯</div>
+          <div className="empty-icon"></div>
           <h3>No CTAs yet</h3>
           <p>Create your first CTA to get started</p>
           <Link href="/admin/ctas/create" className="btn btn-primary">Create CTA</Link>
