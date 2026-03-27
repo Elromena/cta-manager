@@ -23,7 +23,8 @@ export async function GET() {
     return NextResponse.json({ ctas: ctasWithContent });
   } catch (error) {
     console.error('GET /api/cta error:', error);
-    return NextResponse.json({ error: 'Failed to fetch CTAs' }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Failed to fetch CTAs', details: message }, { status: 500 });
   }
 }
 
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ id: ctaId, slug }, { status: 201 });
   } catch (error) {
     console.error('POST /api/cta error:', error);
-    return NextResponse.json({ error: 'Failed to create CTA' }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: 'Failed to create CTA', details: message }, { status: 500 });
   }
 }
